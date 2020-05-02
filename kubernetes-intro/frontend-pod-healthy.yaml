@@ -1,0 +1,30 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  creationTimestamp: null
+  labels:
+    run: frontend
+  name: frontend
+spec:
+  containers:
+    - image: volkmydj/hipster-shop:1.0
+      name: frontend
+      env:
+        - name: PRODUCT_CATALOG_SERVICE_ADDR
+          value: "https://catalog.example.com"
+        - name: CURRENCY_SERVICE_ADDR
+          value: "https://currency-service.example.com"
+        - name: CART_SERVICE_ADDR
+          value: "https://cart-service.example.com"
+        - name: RECOMMENDATION_SERVICE_ADDR
+          value: "https://recomendation-service.example.com"
+        - name: CHECKOUT_SERVICE_ADDR
+          value: "https://checkout-service.example.com"
+        - name: SHIPPING_SERVICE_ADDR
+          value: "https://shipping-service.example.com"
+        - name: AD_SERVICE_ADDR
+          value: "https://ad-service.example.com"
+      resources: {}
+  dnsPolicy: ClusterFirst
+  restartPolicy: Never
+status: {}
