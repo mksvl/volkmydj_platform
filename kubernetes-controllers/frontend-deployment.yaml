@@ -1,0 +1,44 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  labels:
+    app: frontend
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: frontend
+  template:
+    metadata:
+      labels:
+        app: frontend
+    spec:
+      containers:
+        - name: server
+          image: volkmydj/hipster-shop:0.0.2
+          env:
+            - name: PRODUCT_CATALOG_SERVICE_ADDR
+              value: "https://catalog.example.com"
+            - name: CURRENCY_SERVICE_ADDR
+              value: "https://currency-service.example.com"
+            - name: CART_SERVICE_ADDR
+              value: "https://cart-service.example.com"
+            - name: RECOMMENDATION_SERVICE_ADDR
+              value: "https://recomendation-service.example.com"
+            - name: CHECKOUT_SERVICE_ADDR
+              value: "https://checkout-service.example.com"
+            - name: SHIPPING_SERVICE_ADDR
+              value: "https://shipping-service.example.com"
+            - name: AD_SERVICE_ADDR
+              value: "https://ad-service.example.com"
+          ports:
+            - containerPort: 8080
+          readinessProbe:
+            initialDelaySeconds: 10
+            httpGet:
+              path: "/_health"
+              port: 8080
+              httpHeaders:
+                - name: "Coockie"
+                  value: "shop_session-id=x-readiness-probe"
