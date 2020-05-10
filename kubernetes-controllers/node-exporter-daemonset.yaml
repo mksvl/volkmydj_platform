@@ -18,8 +18,7 @@ spec:
         component: node-exporter
     spec:
       tolerations:
-        - key: node-role.kubernetes.io/master
-          effect: NoSchedule
+        - operator: "Exists"
       containers:
         - image: prom/node-exporter:v0.14.0
           name: prometheus-node-exporter
