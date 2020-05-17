@@ -1,11 +1,11 @@
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
 metadata:
-  name: ken
+  name: ken-rb
   namespace: dev
 subjects:
   - kind: ServiceAccount
-    name: ken-service-account
+    name: ken
     apiGroup: rbac.authorization.k8s.io
 roleRef:
   kind: ClusterRole
