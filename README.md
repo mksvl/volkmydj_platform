@@ -79,8 +79,34 @@ main.main() \
 12. Создал манифест DaemonSet для экспортера Node Exporter.
 
 13. Манифест NodeExporter модернизировал так,чтобы Node Exporter разворачивался как на worker нодах, так и на master нодах. Это реализуется в следующей секции манифеста:
+
 ```yaml
       tolerations:
         - operator: "Exists"
 ````
 Пустой `key` с оператором `Exists` соответствует всем ключам, значениям и эффектам, что означает, что это допустимо ко всему кластеру.
+
+# kubernetes-security.HW#3
+
+1. Создан сервисный аккаунт bob.
+2. Аккаунту bob назначена роль администратора в рамках всего кластера.
+
+3. Создан сервисный аккаунт dave.
+
+4. Аккаунт dave не имеет доступ к кластеру.
+
+5. Создан namespace prometheus.
+
+6. Создан сервисный аккаунт в namespace prometheus.
+
+7. Всем сервисным аккаунтам в namespace prometheus предоставлена возможность делать get, list, watch в отношении Pods всего кластера.
+
+8. Создан Namespace dev.
+
+9. Создан сервисный аккаунт jane в Namespace dev.
+
+10. Сервисному аккаунту jane предоставлена роль admin (edit) в рамках Namespace dev.
+
+11. Создан Service Account ken в Namespace dev.
+
+12. Сервисному аккаунту ken предоставлена роль view в рамках Namespace dev.
