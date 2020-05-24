@@ -537,3 +537,87 @@ puts counts
 ````
 {"echo-canary"=>509, "echo-prod"=>491}
 `````
+
+# kubernetes-volumes.HW#5
+
+1. Установил `kind`:
+
+`kind create cluster --config ~/kind-config.yaml`
+
+2. Развернул StatefulSet c MinIO:
+
+`kubectl apply -f minio-statefulset.yaml`
+````
+NAME      READY   STATUS    RESTARTS   AGE
+minio-0   1/1     Running   0          13m
+````
+
+
+3. Для того, чтобы наш StatefulSet был доступен изнутри кластера, создал Headless Service и задеплоил:
+
+`kubectl apply -f minio-statefulset.yaml`
+
+## Задание со *.
+
+Данные в StatefulSet передаются в открытом виде. Нужно это исправить.
+
+1. Кодируем `MINIO_ACCESS_KEY`и `MINIO_SECRET_KEY` в формат base64:
+
+`echo -n 'minio' | base64`
+
+bWluaW8=
+
+`echo -n 'minio123' | base64`
+
+bWluaW8xMjM=
+
+2. Создаем манифест Secret с полученными данными и применяем его:
+
+`kubectl apply -f minio-secret.yaml`
+
+3. Правим манифест StateFullSet:
+
+```yaml
+    spec:
+      containers:
+        - name: minio
+          envFrom:
+            - secretRef:
+                name: minio-secret
+````
+
+4. Применяем манифест и проверяем, что изменения применились:
+
+`kubectl describe pod minio-0`
+
+````
+Name:           minio-0
+Namespace:      default
+Priority:       0
+Node:           kind-worker/172.18.0.3
+Start Time:     Sun, 24 May 2020 13:43:29 +0300
+Labels:         app=minio
+                controller-revision-hash=minio-f997965b5
+                statefulset.kubernetes.io/pod-name=minio-0
+Annotations:    <none>
+Status:         Running
+IP:             10.244.5.6
+Controlled By:  StatefulSet/minio
+Containers:
+  minio:
+    Container ID:  containerd://76f7a72c4ee6a215cf85748e98a9999f51e4edd863ec7cc1cd4a7cbcd4894e09
+    Image:         minio/minio:RELEASE.2019-07-10T00-34-56Z
+    Image ID:      docker.io/minio/minio@sha256:ccdbb297318f763dc1110d5168c8d45863c98ff1f0d7095a90be3b31a150ac6f
+    Port:          9000/TCP
+    Host Port:     0/TCP
+    Args:
+      server
+      /data
+    State:          Running
+      Started:      Sun, 24 May 2020 13:43:30 +0300
+    Ready:          True
+    Restart Count:  0
+    Liveness:       http-get http://:9000/minio/health/live delay=120s timeout=1s period=20s #success=1 #failure=3
+    Environment Variables from:
+      minio-secret  Secret  Optional: false
+````
