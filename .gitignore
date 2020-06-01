@@ -1,2 +1,10 @@
 ./kubernetes-intro/microservices-demo
 k1s
+.terraform
+*.tfvars
+chart-mysql
+*.tfstate.*.backup
+*.tfstate.backup
+*.tfstate
+*.tfvars
+.terraform/
