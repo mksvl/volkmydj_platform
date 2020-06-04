@@ -8,3 +8,4 @@ chart-mysql
 *.tfstate
 *.tfvars
 .terraform/
+__pycache__
