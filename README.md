@@ -2003,3 +2003,94 @@ mysql: [Warning] Using a password on the command line interface can be insecure.
 |  2 | some data-2 |
 +----+-------------+
 ````
+
+
+## kubernetes-monitoring
+
+1. Поднял minikube:
+
+`minikube start`
+
+2. Установил prometheus-operator:
+
+`helm repo add stable https://kubernetes-charts.storage.googleapis.com`
+
+`helm upgrade --install prometheus-operator stable/prometheus-operator --create-namespace --namespace monitoring --version 8.13.12`
+
+3. Инициализировал helm chart:
+
+`helm init custom-nginx`
+
+ В чарте удалил все лишние и доавил манифесты приложения nginx.
+
+ Шаблонизировал чарты.
+
+4. Установил chart nginx:
+
+`helm upgrade --install custom-nginx kubernetes-monitoring/custom-nginx`
+
+5. Проверяем работу приложения:
+
+`kubectl get pods`
+
+````
+NAME                     READY   STATUS    RESTARTS   AGE
+nginx-869f7cf565-524lv   2/2     Running   0          90m
+nginx-869f7cf565-9csnm   2/2     Running   0          90m
+nginx-869f7cf565-fh75r   2/2     Running   0          90m
+````
+
+Делаем пробросов портов:
+
+`kubectl port-forward service/nginx 9113:9113`
+
+````
+Forwarding from 127.0.0.1:9113 -> 9113
+Forwarding from [::1]:9113 -> 9113
+````
+`curl http://127.0.0.1:9113/metrics`
+
+````
+# HELP nginx_connections_accepted Accepted client connections
+# TYPE nginx_connections_accepted counter
+nginx_connections_accepted 4
+# HELP nginx_connections_active Active client connections
+# TYPE nginx_connections_active gauge
+nginx_connections_active 1
+# HELP nginx_connections_handled Handled client connections
+# TYPE nginx_connections_handled counter
+nginx_connections_handled 4
+# HELP nginx_connections_reading Connections where NGINX is reading the request header
+# TYPE nginx_connections_reading gauge
+nginx_connections_reading 0
+# HELP nginx_connections_waiting Idle client connections
+# TYPE nginx_connections_waiting gauge
+nginx_connections_waiting 0
+# HELP nginx_connections_writing Connections where NGINX is writing the response back to the client
+# TYPE nginx_connections_writing gauge
+nginx_connections_writing 1
+# HELP nginx_http_requests_total Total http requests
+# TYPE nginx_http_requests_total counter
+nginx_http_requests_total 172
+# HELP nginx_up Status of the last metric scrape
+# TYPE nginx_up gauge
+nginx_up 1
+# HELP nginxexporter_build_info Exporter build information
+# TYPE nginxexporter_build_info gauge
+nginxexporter_build_info{gitCommit="a2910f1",version="0.7.0"} 1
+````
+
+6. Пробрасываем порты для prometheus:
+
+`kubectl port-forward service/prometheus-operator-prometheus -n monitoring 9090:9090`
+
+Заходим на: `http://127.0.0.1:9090/targets `
+Смотрим, что 3 репики нашего приложения поднялись и работают.
+
+7. Пробрасываем порты для `Grafana`:
+
+`kubectl port-forward service/prometheus-operator-grafana  -n monitoring 8000:80`
+
+8. Строим график для запросов в 1 мин:
+
+<img src="Users/marantz/OTUS/volkmydj_platform/kubernetes-monitoring/custom-nginx/grafana.png" />

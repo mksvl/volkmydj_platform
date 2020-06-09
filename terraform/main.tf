@@ -49,8 +49,8 @@ resource "google_container_node_pool" "reddit_app-pool" {
   }
 
   node_config {
-    preemptible  = false
-    machine_type = "n1-standard-2"
+    preemptible  = true
+    machine_type = "n1-standard-1"
     disk_size_gb = 20
     disk_type    = "pd-standard"
     tags         = var.nodes-tag

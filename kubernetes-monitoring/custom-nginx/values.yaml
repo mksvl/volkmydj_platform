@@ -1,0 +1,26 @@
+image:
+  tag: 0.0.1
+replicas: 3
+
+metadata:
+  name: nginx
+  labels:
+    app: nginx
+
+volumeMounts:
+  mountPath: /etc/nginx/nginx.conf
+  subPath: nginx.conf
+
+env:
+    value: "http://127.0.0.1:8080/basic_status"
+
+nginx:
+  tag: 0.7.0
+
+app: nginx
+name: nginx
+
+service:
+  name: nginx
+  labels:
+    app: nginx
