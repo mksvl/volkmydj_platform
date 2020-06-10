@@ -35,8 +35,8 @@ resource "google_container_cluster" "cluster-1" {
 
 }
 
-resource "google_container_node_pool" "reddit_app-pool" {
-  name       = "my-node-pool"
+resource "google_container_node_pool" "default-pool" {
+  name       = "default-pool"
   location   = var.zone
   cluster    = google_container_cluster.cluster-1.name
   node_count = 1
@@ -50,7 +50,7 @@ resource "google_container_node_pool" "reddit_app-pool" {
 
   node_config {
     preemptible  = true
-    machine_type = "n1-standard-1"
+    machine_type = "n1-standard-2"
     disk_size_gb = 20
     disk_type    = "pd-standard"
     tags         = var.nodes-tag
@@ -65,9 +65,49 @@ resource "google_container_node_pool" "reddit_app-pool" {
   }
 }
 
-resource "google_compute_firewall" "firewall-gke-reddit" {
-  name        = "allow-reddit-gke"
-  description = "Alow port for gke-reddit"
+resource "google_container_node_pool" "infra-pool" {
+  name       = "infra-pool"
+  location   = var.zone
+  cluster    = google_container_cluster.cluster-1.name
+  node_count = 3
+  version    = "1.15.11-gke.13"
+  #min_master_version = "1.15.11-gke.13"
+
+  management {
+    auto_upgrade = false
+    auto_repair  = true
+  }
+
+  autoscaling {
+    min_node_count = 3
+    max_node_count = 5
+  }
+
+  node_config {
+    preemptible  = true
+    machine_type = "n1-standard-2"
+    disk_size_gb = 20
+    disk_type    = "pd-standard"
+    tags         = var.nodes-tag
+    metadata = {
+      disable-legacy-endpoints = "true"
+    }
+    taint {
+      key    = "node-role"
+      value  = "infra"
+      effect = "NO_SCHEDULE"
+    }
+
+    oauth_scopes = [
+      "https://www.googleapis.com/auth/logging.write",
+      "https://www.googleapis.com/auth/monitoring",
+    ]
+  }
+}
+
+resource "google_compute_firewall" "firewall-gke" {
+  name        = "allow-gke"
+  description = "Alow port for gke"
   network     = "default"
   allow {
     protocol = "tcp"

@@ -1,0 +1,6 @@
+ingress:
+  enabled: true
+  annotations: { kubernetes.io/ingress.class: nginx }
+  path: /
+  hosts:
+    - grafana.34.90.15.130.xip.io
