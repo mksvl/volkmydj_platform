@@ -2093,4 +2093,743 @@ nginxexporter_build_info{gitCommit="a2910f1",version="0.7.0"} 1
 
 8. Строим график для запросов в 1 мин:
 
-<img src="Users/marantz/OTUS/volkmydj_platform/kubernetes-monitoring/custom-nginx/grafana.png" />
+![альт](https://github.com/otus-kuber-2020-04/volkmydj_platform/blob/kubernetes-monitoring/kubernetes-monitoring/grafana.png?raw=true "описание при наведении")
+
+
+kubectl apply -f https://raw.githubusercontent.com/express42/otus-platform-snippets/master/Module-02/Logging/microservices-demo-without-resources.yaml -n microservices-demo
+
+
+
+## kubernetes-logging
+---
+==Подготовка Kubernetes кластера==
+
+1. Поднимаем кластер с 2 пулами нод и проверяем подключение:
+
+`terraform apply` (ждем примерно 6-7 мин.)
+
+````
+Apply complete! Resources: 4 added, 0 changed, 0 dest
+````
+`gcloud container clusters get-credentials my-gke-cluster --region europe-west4-a --project otus-kuber-278507`
+
+`kubectl get nodes`
+
+````
+NAME                                            STATUS   ROLES    AGE     VERSION
+gke-my-gke-cluster-default-pool-5458d676-d28h   Ready    <none>   4m13s   v1.15.11-gke.13
+gke-my-gke-cluster-infra-pool-4afaa6fe-1v9k     Ready    <none>   9m50s   v1.15.11-gke.13
+gke-my-gke-cluster-infra-pool-4afaa6fe-4tg4     Ready    <none>   9m51s   v1.15.11-gke.13
+gke-my-gke-cluster-infra-pool-4afaa6fe-scld     Ready    <none>   9m50s   v1.15.11-gke.13
+````
+### ==Установка hipster-shop==
+
+* Самый простой способ сделать это - применить подготовленный манифест:
+
+`kubectl create ns microservices-demo`
+
+
+`kubectl apply -f https://raw.githubusercontent.com/express42/otus-platform-snippets/master/Module-02/Logging/microservices-demo-without-resources.yaml -n microservices-demo`
+
+````
+deployment.apps/emailservice created
+service/emailservice created
+deployment.apps/checkoutservice created
+service/checkoutservice created
+deployment.apps/recommendationservice created
+service/recommendationservice created
+deployment.apps/frontend created
+service/frontend created
+service/frontend-external created
+deployment.apps/paymentservice created
+service/paymentservice created
+deployment.apps/productcatalogservice created
+service/productcatalogservice created
+deployment.apps/cartservice created
+service/cartservice created
+deployment.apps/loadgenerator created
+deployment.apps/currencyservice created
+service/currencyservice created
+deployment.apps/shippingservice created
+service/shippingservice created
+deployment.apps/redis-cart created
+service/redis-cart created
+deployment.apps/adservice created
+service/adservice created
+````
+
+* Проверяем, что все pod развернулись на ноде из default-pool:
+
+`kubectl get pods -n microservices-demo -o wide`
+
+````
+NAME                                     READY   STATUS    RESTARTS   AGE     IP           NODE                                            NOMINATED NODE   READINESS GATES
+adservice-9679d5b56-n498g                1/1     Running   0          2m48s   10.32.0.19   gke-my-gke-cluster-default-pool-5458d676-d28h   <none>           <none>
+cartservice-66b4c7d59-vxrqd              1/1     Running   2          2m49s   10.32.0.14   gke-my-gke-cluster-default-pool-5458d676-d28h   <none>           <none>
+checkoutservice-6cb96b65fd-9wrws         1/1     Running   0          2m52s   10.32.0.9    gke-my-gke-cluster-default-pool-5458d676-d28h   <none>           <none>
+currencyservice-68df8c8788-977wd         1/1     Running   0          2m49s   10.32.0.16   gke-my-gke-cluster-default-pool-5458d676-d28h   <none>           <none>
+emailservice-6fc9c98fd-6fwc6             1/1     Running   0          2m52s   10.32.0.8    gke-my-gke-cluster-default-pool-5458d676-d28h   <none>           <none>
+frontend-5559967bcd-9hh5n                1/1     Running   0          2m51s   10.32.0.11   gke-my-gke-cluster-default-pool-5458d676-d28h   <none>           <none>
+loadgenerator-674846f899-clmcb           1/1     Running   4          2m49s   10.32.0.15   gke-my-gke-cluster-default-pool-5458d676-d28h   <none>           <none>
+paymentservice-6cb4db7678-nvbpn          1/1     Running   0          2m50s   10.32.0.12   gke-my-gke-cluster-default-pool-5458d676-d28h   <none>           <none>
+productcatalogservice-768b67d968-zm9sf   1/1     Running   0          2m50s   10.32.0.13   gke-my-gke-cluster-default-pool-5458d676-d28h   <none>           <none>
+recommendationservice-f45c4979d-hdk88    1/1     Running   0          2m51s   10.32.0.10   gke-my-gke-cluster-default-pool-5458d676-d28h   <none>           <none>
+redis-cart-cfcbcdf6c-59bvp               1/1     Running   0          2m48s   10.32.0.18   gke-my-gke-cluster-default-pool-5458d676-d28h   <none>           <none>
+shippingservice-5d68c4f8d4-8g2bv         1/1     Running   0          2m48s   10.32.0.17   gke-my-gke-cluster-default-pool-5458d676-d28h   <none>           <none>
+````
+
+### ==Установка EFK стека | Helm charts==
+
+* Рекомендуемый репозиторий с Helm chart для ElasticSearch и Kibana на текущий момент - https://github.com/elastic/helm-charts
+
+Добавим его:
+
+`helm repo add elastic https://helm.elastic.co`
+
+`helm repo update`
+
+````
+Hang tight while we grab the latest from your chart repositories...
+...Successfully got an update from the "harbor" chart repository
+...Successfully got an update from the "nginx-stable" chart repository
+...Successfully got an update from the "kubernetes-incubator" chart repository
+...Successfully got an update from the "incubator" chart repository
+...Successfully got an update from the "elastic" chart repository
+...Successfully got an update from the "gitlab" chart repository
+...Successfully got an update from the "loki" chart repository
+...Successfully got an update from the "jetstack" chart repository
+...Successfully got an update from the "bitnami" chart repository
+...Successfully got an update from the "stable" chart repository
+...Unable to get an update from the "chartmusem" chart repository
+Update Complete. ⎈ Happy Helming!⎈
+````
+
+* Установим нужные нам компоненты, для начала - без какой- либо дополнительной настройки:
+
+`kubectl create ns observability`
+
+ ElasticSearch \
+`helm upgrade --install elasticsearch elastic/elasticsearch --namespace observability`
+
+````
+Release "elasticsearch" does not exist. Installing it now.
+NAME: elasticsearch
+LAST DEPLOYED: Wed Jun 10 17:18:05 2020
+NAMESPACE: observability
+STATUS: deployed
+REVISION: 1
+NOTES:
+1. Watch all cluster members come up.
+  $ kubectl get pods --namespace=observability -l app=elasticsearch-master -w
+2. Test cluster health using Helm test.
+  $ helm test elasticsearch --cleanup
+````
+Kibana \
+`helm upgrade --install kibana elastic/kibana --namespace observability`
+````
+Release "kibana" does not exist. Installing it now.
+NAME: kibana
+LAST DEPLOYED: Wed Jun 10 17:19:06 2020
+NAMESPACE: observability
+STATUS: deployed
+REVISION: 1
+TEST SUITE: None
+````
+
+Fluent Bit \
+`helm upgrade --install fluent-bit stable/fluent-bit --namespace observability`
+
+````
+Release "fluent-bit" does not exist. Installing it now.
+NAME: fluent-bit
+LAST DEPLOYED: Wed Jun 10 17:21:11 2020
+NAMESPACE: observability
+STATUS: deployed
+REVISION: 1
+NOTES:
+fluent-bit is now running.
+
+It will forward all container logs to the svc named fluentd on port: 24284
+````
+
+* Создаем в директории kubernetes-logging файл `elasticsearch.values.yaml`, будем указывать в этом файле нужные нам values.
+
+* Разрешим ElasticSearch запускаться на данных нодах:
+
+```yaml
+tolerations:
+  - key: node-role
+      operator: Equal
+      value: infra
+      effect: NoSchedule
+````
+* Обновляем установку:
+
+`helm upgrade --install elasticsearch elastic/elasticsearch --namespace observability -f elasticsearch.values.yaml`
+
+Теперь ElasticSearch может запускаться на нодах из infra-pool, но это не означает, что он должен это делать.
+
+Исправим этот момент и добавим в `elasticsearch.values.yaml` `NodeSelector`, определяющий, на каких нодах мы можем запускать наши pod.
+
+```yaml
+nodeSelector:
+  cloud.google.com/gke-nodepool: infra-pool
+````
+
+* Обновляем установку:
+
+`helm upgrade --install elasticsearch elastic/elasticsearch --namespace observability -f elasticsearch.values.yaml`
+
+Через некоторое время мы сможем наблюдать следующую картину:
+
+`kubectl get pods -n observability -o wide -l chart=elasticsearch`
+
+
+````
+NAME                     READY   STATUS    RESTARTS   AGE    IP           NODE                                            NOMINATED NODE   READINESS GATES
+elasticsearch-master-0   1/1     Running   0          14m    10.32.0.20   gke-my-gke-cluster-default-pool-5458d676-d28h   <none>           <none>
+elasticsearch-master-1   0/1     Running   0          50s    10.32.2.3    gke-my-gke-cluster-infra-pool-4afaa6fe-scld     <none>           <none>
+elasticsearch-master-2   1/1     Running   0          2m2s   10.32.3.3    gke-my-gke-cluster-infra-pool-4afaa6fe-1v9k     <none>           <none>
+````
+
+==Установка nginx-ingress==
+
+* Устанавливаем nginx-ingress. Разворачиваем три реплики controller, по одной, на каждую ноду из infra-pool:
+
+`ingress.values.yaml`:
+
+````yaml
+controller:
+  replicaCount: 3
+
+  tolerations:
+    - key: node-role
+      operator: Equal
+      value: infra
+      effect: NoSchedule
+
+  affinity:
+    podAntiAffinity:
+      preferredDuringSchedulingIgnoredDuringExecution:
+        - weight: 100
+          podAffinityTerm:
+            labelSelector:
+              matchExpressions:
+                - key: app
+                  operator: In
+                  values:
+                    - nginx-ingress
+            topologyKey: kubernetes.io/hostname
+
+  nodeSelector:
+    cloud.google.com/gke-nodepool: infra-pool
+````
+Вкатываем:
+
+`helm upgrade --install nginx-ingress stable/nginx-ingress --namespace=nginx-ingress --version=1.39.0 -f nginx-ingress.values.yaml --create-namespace`
+
+````
+Release "nginx-ingress" does not exist. Installing it now.
+NAME: nginx-ingress
+LAST DEPLOYED: Wed Jun 10 17:39:27 2020
+NAMESPACE: nginx-ingress
+STATUS: deployed
+REVISION: 1
+TEST SUITE: None
+NOTES:
+The nginx-ingress controller has been installed.
+It may take a few minutes for the LoadBalancer IP to be available.
+You can watch the status by running 'kubectl --namespace nginx-ingress get services -o wide -w nginx-ingress-controller'
+
+An example Ingress that makes use of the controller:
+
+  apiVersion: extensions/v1beta1
+  kind: Ingress
+  metadata:
+    annotations:
+      kubernetes.io/ingress.class: nginx
+    name: example
+    namespace: foo
+  spec:
+    rules:
+      - host: www.example.com
+        http:
+          paths:
+            - backend:
+                serviceName: exampleService
+                servicePort: 80
+              path: /
+    # This section is only required if TLS is to be enabled for the Ingress
+    tls:
+        - hosts:
+            - www.example.com
+          secretName: example-tls
+
+If TLS is enabled for the Ingress, a Secret containing the certificate and key must also be provided:
+
+  apiVersion: v1
+  kind: Secret
+  metadata:
+    name: example-tls
+    namespace: foo
+  data:
+    tls.crt: <base64 encoded cert>
+    tls.key: <base64 encoded key>
+  type: kubernetes.io/tls
+````
+
+### ==Установка EFK стека | Kibana==
+
+* Создаем файл kibana.values.yaml в директории kubernetes-logging и добавляем туда конфигурацию для создания ingress:
+
+````yaml
+ingress:
+  enabled: true
+  annotations: { kubernetes.io/ingress.class: nginx }
+  path: /
+  hosts:
+    - kibana.34.90.81.164.xip.io
+````
+Обновляем релиз:
+
+`helm upgrade --install kibana elastic/kibana --namespace observability -f kibana.values.yaml`
+
+````
+Release "kibana" has been upgraded. Happy Helming!
+NAME: kibana
+LAST DEPLOYED: Wed Jun 10 17:45:34 2020
+NAMESPACE: observability
+STATUS: deployed
+REVISION: 2
+TEST SUITE: None
+````
+
+* Попробуем создать `index pattern`, и увидим, что в ElasticSearch пока что не обнаружено никаких данных:
+
+![alt text](screenshots/kibana-1.png "Описание будет тут")​
+
+* Посмотрим в логи решения, которое отвечает за отправку логов (Fluent Bit) и увидим следующие строки:
+
+`kubectl logs fluent-bit-xnknh -n observability --tail 2`
+
+````
+[2020/06/10 14:58:19] [error] [out_fw] no upstream connections available
+[2020/06/10 14:58:19] [ warn] [engine] failed to flush chunk '1-1591798878.183008011.flb', retry in 1090 seconds: task_id=14, input=tail.0 > output=forward.0
+````
+
+* Попробуем исправить проблему. Создадим файл fluent- bit.values.yaml и добавим туда:
+
+````yaml
+backend:
+  type: es
+  es:
+    host: elasticsearch-master
+````
+Обновляем релиз:
+
+`helm upgrade --install fluent-bit stable/fluent-bit --namespace observability -f fluent-bit.values.yaml`
+
+````
+Release "fluent-bit" has been upgraded. Happy Helming!
+NAME: fluent-bit
+LAST DEPLOYED: Wed Jun 10 18:30:57 2020
+NAMESPACE: observability
+STATUS: deployed
+REVISION: 2
+NOTES:
+fluent-bit is now running.
+````
+
+Попробуем повторно создать index pattern. В этот раз ситуация изменилась, и какие-то индексы в ElasticSearch уже есть:
+
+![alt text](screenshots/kibana-2.png )​
+
+
+После установки можно заметить, что в ElasticSearch попадают
+далеко не все логи нашего приложения.
+Причину можно найти в логах pod с Fluent Bit, он пытается обработать JSON, отдаваемый приложением, и находит там дублирующиеся поля time и timestamp.
+
+(GitHub [issue], с более подробным описанием проблемы)
+
+[issue]: https://github.com/fluent/fluent-bit/issues/628
+
+* Воспользуемся фильтром [Modify],
+который позволит удалить из логов "лишние" ключи:
+
+[Modify]: https://docs.fluentbit.io/manual/pipeline/filters/modify
+
+`fluent-bit.values.yaml`:
+
+````yaml
+backend:
+  type: es
+  es:
+    host: elasticsearch-master
+rawConfig: |
+  @INCLUDE fluent-bit-service.conf
+  @INCLUDE fluent-bit-input.conf
+  @INCLUDE fluent-bit-filter.conf
+  @INCLUDE fluent-bit-output.conf
+
+  [FILTER]
+      Name     modify
+      Match    *
+      Remove   time
+      Remove   @timestamp
+`````
+
+Обновляем релиз:
+
+`helm upgrade --install fluent-bit stable/fluent-bit --namespace observability -f fluent-bit.values.yaml`
+
+````
+Release "fluent-bit" has been upgraded. Happy Helming!
+NAME: fluent-bit
+LAST DEPLOYED: Wed Jun 10 18:48:07 2020
+NAMESPACE: observability
+STATUS: deployed
+REVISION: 4
+NOTES:
+fluent-bit is now running.
+````
+
+#### Задание со ⭐
+
+Попробуем другое решение проблемы.
+
+* Удалим строки в секции:
+
+````
+  [FILTER]
+      Name     modify
+      Match    *
+      Remove   time
+      Remove   @timestamp
+`````
+
+* Добавим префикс к полям из json:
+
+````
+filter:
+  mergeLogKey: "app"
+````
+
+Обновляем релиз:
+
+`helm upgrade --install fluent-bit stable/fluent-bit --namespace observability -f fluent-bit.values.yaml`
+
+
+### ==Мониторинг ElasticSearch==
+
+
+* Для мониторинга ElasticSearch будем использовать следующий [Prometheus exporter].
+
+[Prometheus exporter]: https://github.com/justwatchcom/elasticsearch_exporter
+
+Устанавливаем его (см `prometheus.values.yaml`):
+
+`helm upgrade --install  prometheus-operator stable/prometheus-operator -n observability --create-namespace -f prometheus.values.yaml`
+
+````
+NAME: prometheus-operator
+LAST DEPLOYED: Wed Jun 10 19:05:41 2020
+NAMESPACE: observability
+STATUS: deployed
+REVISION: 1
+NOTES:
+The Prometheus Operator has been installed. Check its status by running:
+  kubectl --namespace observability get pods -l "release=prometheus-operator"
+
+Visit https://github.com/coreos/prometheus-operator for instructions on how
+to create & configure Alertmanager and Prometheus instances using the Operator.
+````
+
+* Устанавливаем exporter:
+
+`helm upgrade --install elasticsearch-exporter stable/elasticsearch-exporter --set es.uri=http://elasticsearch-master:9200 --set serviceMonitor.enabled=true --namespace=observability`
+
+````
+Release "elasticsearch-exporter" does not exist. Installing it now.
+NAME: elasticsearch-exporter
+LAST DEPLOYED: Wed Jun 10 19:10:29 2020
+NAMESPACE: observability
+STATUS: deployed
+REVISION: 1
+TEST SUITE: None
+NOTES:
+1. Get the application URL by running these commands:
+  export POD_NAME=$(kubectl get pods --namespace observability -l "app=elasticsearch-exporter" -o jsonpath="{.items[0].metadata.name}")
+  echo "Visit http://127.0.0.1:9108/metrics to use your application"
+  kubectl port-forward $POD_NAME 9108:9108 --namespace observability
+````
+
+* Устанавливаем один из популярных дашбордов:
+
+![alt text](screenshots/grafana-1.png )​
+
+* Сделаем drain одной из нод infra-pool
+
+`kubectl drain gke-my-gke-cluster-infra-pool-4afaa6fe-1v9k --ignore-daemonsets`
+
+````
+node/gke-my-gke-cluster-infra-pool-4afaa6fe-1v9k cordoned
+WARNING: ignoring DaemonSet-managed Pods: observability/prometheus-operator-prometheus-node-exporter-srn5p
+evicting pod "nginx-ingress-controller-75b44fddff-tcsqk"
+evicting pod "elasticsearch-master-2"
+pod/elasticsearch-master-2 evicted
+````
+Статус Cluster Health остался зеленым, но количество нод в кластере уменьшилось до двух штук. При этом, кластер сохранил полную работоспособность:
+
+![alt text](screenshots/grafana-2.png )​
+
+Попробуем сделать drain второй ноды из infra-pool, и увидим что [PDB] не дает этого сделать:
+
+[PDB]: https://kubernetes.io/docs/tasks/run-application/configure-pdb/
+
+`kubectl drain gke-my-gke-cluster-infra-pool-4afaa6fe-4tg4 --ignore-daemonsets`
+
+````
+WARNING: ignoring DaemonSet-managed Pods: observability/prometheus-operator-prometheus-node-exporter-rpgnh
+evicting pod "elasticsearch-master-0"
+evicting pod "nginx-ingress-controller-75b44fddff-qp44k"
+evicting pod "nginx-ingress-controller-75b44fddff-dwv9p"
+error when evicting pod "elasticsearch-master-0" (will retry after 5s): Cannot evict pod as it would violate the pod's disruption budget.
+evicting pod "elasticsearch-master-0"
+error when evicting pod "elasticsearch-master-0" (will retry after 5s): Cannot evict pod as it would violate the pod's disruption budget.
+evicting pod "elasticsearch-master-0"
+error when evicting pod "elasticsearch-master-0" (will retry after 5s): Cannot evict pod as it would violate the pod's disruption budget.
+````
+Удалим под той ноды, которую хотели удалить:
+
+`kubectl delete pods elasticsearch-master-0 -n observability`
+
+Оставшийся под перешел в статус Pending:
+
+````
+observability        elasticsearch-master-2     0/1     Pending   0          36m
+````
+
+
+## ==EFK | nginx ingress==
+
+Попробуем найти в Kibana логи nginx-ingress (например, полнотекстовым поиском по слову nginx) и обнаружим, что они отсутствуют.
+
+* Разрешим запуск fluent-bit на infra нодах в `fluent-bit.values.yaml`:
+
+````yaml
+tolerations:
+  - key: node-role
+    operator: Equal
+    value: infra
+    effect: NoSchedule
+````
+Обновляем релиз:
+
+`helm upgrade --install fluent-bit stable/fluent-bit --namespace observability -f fluent-bit.values.yaml`
+
+* После появления логов nginx у нас возникнет следующая проблема:
+
+![alt text](screenshots/kibana-3.png )​
+
+Сейчас лог представляет из себя строку, с которой сложно
+работать.
+Мы можем использовать полнотекстовый поиск, но лишены возможности:
+- Задействовать функции KQL
+- Полноценно проводить аналитику
+- Создавать Dashboard по логам
+- ...
+
+* Добавим ключ [log-format-escape-json], в nginx-ingress.values.yaml
+
+[log-format-escape-json]: https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/configmap/#log-format-escape-json
+
+Также добавим [log-format-upstream]:
+
+[log-format-upstream]: https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/configmap/#log-format-escape-json
+
+
+```yaml
+  config:
+    log-format-escape-json: "true"
+    log-format-upstream: '{"remote_addr": "$proxy_protocol_addr", "x-forward-for": "$proxy_add_x_forwarded_for", "request_id": "$req_id", "remote_user": "$remote_user", "bytes_sent": $bytes_sent, "request_time": $request_time, "status":$status, "vhost": "$host", "request_proto": "$server_protocol", "path": "$uri", "request_query": "$args", "request_length": $request_length, "duration": $request_time,"method": "$request_method", "http_referrer": "$http_referer", "http_user_agent": "$http_user_agent" }'
+```
+
+Обновим релиз:
+
+`helm upgrade --install nginx-ingress stable/nginx-ingress --namespace=nginx-ingress --version=1.39.0 -f nginx-ingress.values.yaml --create-namespace`
+
+Проверяем:
+
+`kubectl get  configmaps nginx-ingress-controller -n nginx-ingress -o yaml`
+
+````yaml
+apiVersion: v1
+data:
+  log-format-escape-json: "true"
+  log-format-upstream: '{"remote_addr": "$proxy_protocol_addr", "x-forward-for": "$proxy_add_x_forwarded_for",
+    "request_id": "$req_id", "remote_user": "$remote_user", "bytes_sent": $bytes_sent,
+    "request_time": $request_time, "status":$status, "vhost": "$host", "request_proto":
+    "$server_protocol", "path": "$uri", "request_query": "$args", "request_length":
+    $request_length, "duration": $request_time,"method": "$request_method", "http_referrer":
+    "$http_referer", "http_user_agent": "$http_user_agent" }'
+kind: ConfigMap
+metadata:
+  annotations:
+    meta.helm.sh/release-name: nginx-ingress
+    meta.helm.sh/release-namespace: nginx-ingress
+  creationTimestamp: "2020-06-10T17:23:19Z"
+  labels:
+    app: nginx-ingress
+    app.kubernetes.io/managed-by: Helm
+    chart: nginx-ingress-1.39.0
+    component: controller
+    heritage: Helm
+    release: nginx-ingress
+  name: nginx-ingress-controller
+  namespace: nginx-ingress
+  resourceVersion: "65309"
+  selfLink: /api/v1/namespaces/nginx-ingress/configmaps/nginx-ingress-controller
+  uid: 1868ce3e-5617-4e3a-b163-dac1829f305b
+````
+
+Формат логов изменился:
+
+````
+"_source": {
+  x-forward-for": "10.128.0.35",
+  "request_id": "bfcee33afe75c099f7887d7e70b1ab00",
+  "bytes_sent": 19087,
+  "request_time": 1.168,
+  "status": 200,
+````
+
+* Создаем новую визуализацию с типом TSVB:
+
+Для начала, создадим визуализацию, показывающую общее количество запросов к nginx-ingress. Для этого нам понадобится применить следующий KQL фильтр:
+
+`kubernetes.labels.app : nginx-ingress`
+
+Добавляем данный фильтр в Panel options нашей визуализации.
+
+* Cоздаем визуализации для отображения запросов к nginx-ingress со статусами:
+
+ - 200-299
+ - 300-399
+ - 400-499
+ - 500+
+
+Создаем Dashboard и добавляем на него свои визуализации.
+
+Экспортируем получившиеся визуализации и Dashboard,добавляем файл `export.ndjson`.
+
+
+## ==Loki==
+
+* Установливаме Loki в namespace observability
+* Модифицируем конфигурацию prometheus-operator таким образом, чтобы datasource Loki создавался сразу после установки оператора
+* Включаем метрики для nginx-ingress
+
+Обновляем релизы:
+
+`helm upgrade --install nginx-ingress stable/nginx-ingress --namespace=nginx-ingress --version=1.39.0 -f nginx-ingress.values.yaml --create-namespace`
+
+`helm upgrade --install  prometheus-operator stable/prometheus-operator -n observability --create-namespace -f prometheus.values.yaml`
+
+Устанавливаем Loki:
+
+`helm repo add loki https://grafana.github.io/loki/charts`
+
+`helm repo update`
+
+`helm upgrade --install loki --namespace=observability loki/loki-stack  -f loki.values.yaml`
+
+Проверяем:
+
+`kubectl get pods -n observability`
+
+````
+NAME                                                     READY   STATUS    RESTARTS   AGE
+alertmanager-prometheus-operator-alertmanager-0          2/2     Running   0          115m
+elasticsearch-exporter-7787cf7bf4-z7fmd                  1/1     Running   0          111m
+elasticsearch-master-0                                   1/1     Running   0          70m
+elasticsearch-master-1                                   1/1     Running   0          138m
+elasticsearch-master-2                                   1/1     Running   0          104m
+fluent-bit-26wsl                                         1/1     Running   0          55m
+fluent-bit-49k77                                         1/1     Running   0          55m
+fluent-bit-dhc96                                         1/1     Running   0          55m
+fluent-bit-sgl6h                                         1/1     Running   0          54m
+kibana-kibana-9bd8f8cb9-b7htc                            1/1     Running   0          3h43m
+loki-0                                                   0/1     Running   0          46s
+loki-promtail-2gs46                                      1/1     Running   0          46s
+loki-promtail-8qtvc                                      1/1     Running   0          46s
+loki-promtail-mnfsr                                      1/1     Running   0          46s
+loki-promtail-tj9b2                                      1/1     Running   0          46s
+prometheus-operator-grafana-6678fc5cd5-46n67             2/2     Running   0          115m
+prometheus-operator-kube-state-metrics-5c4649546-jdjhv   1/1     Running   0          115m
+prometheus-operator-operator-dc6fbb584-4vhrh             2/2     Running   0          115m
+prometheus-operator-prometheus-node-exporter-lzfz6       1/1     Running   0          115m
+prometheus-operator-prometheus-node-exporter-rpgnh       1/1     Running   0          115m
+prometheus-operator-prometheus-node-exporter-srn5p       1/1     Running   0          115m
+prometheus-operator-prometheus-node-exporter-w7z9r       1/1     Running   0          115m
+prometheus-prometheus-operator-prometheus-0              3/3     Running   1          115m
+````
+
+
+````
+Release "loki" does not exist. Installing it now.
+NAME: loki
+LAST DEPLOYED: Wed Jun 10 21:01:21 2020
+NAMESPACE: observability
+STATUS: deployed
+REVISION: 1
+NOTES:
+The Loki stack has been deployed to your cluster. Loki can now be added as a datasource in Grafana.
+
+See http://docs.grafana.org/features/datasources/loki/ for more detail.
+````
+
+## ==Loki | nginx ingress==
+
+До недавнего времени, единственным способом визуализации логов в Loki была функция Explore.
+
+Loki, аналогично ElasticSearch умеет разбирать JSON лог по ключам, но, к сожалению, фильтрация по данным ключам на текущий момент не работает.
+
+
+## ==Loki | Визуализация==
+
+* Создаем Dashboard, на котором одновременно выведем
+метрики nginx-ingress и его логи:
+
+`nginx.json`
+
+* Добавим панель с логами и укажем для нее следующие настройки Query:
+
+`{app="nginx-ingress"}`
+
+* Добавим в Dashboard дополнительные панели с метриками, отслеживание которых может быть важным.
+
+* Выгрузим из Grafana JSON с финальным Dashboard и поместим его в файл kubernetes-logging/nginx-ingress.json
+
+## ==Event logging | k8s-event-logger==
+
+* Установим еще одну небольшую, но очень полезную [утилиту], позволяющую получить и сохранить event'ы Kubernetes в выбранном решении для логирования:
+
+[утилиту]: https://github.com/max-rocket-internet/k8s-event-logger
+
+`git clone https://github.com/max-rocket-internet/k8s-event-logger.git`
+
+`helm upgrade --install event-logger -n observability chart/`
+
+````
+Release "event-logger" does not exist. Installing it now.
+NAME: event-logger
+LAST DEPLOYED: Wed Jun 10 21:23:36 2020
+NAMESPACE: observability
+STATUS: deployed
+REVISION: 1
+TEST SUITE: None
+NOTES:
+To verify that the k8s-event-logger pod has started, run:
+
+  kubectl --namespace=observability get pods -l "app.kubernetes.io/name=k8s-event-logger,app.kubernetes.io/instance=event-logger"
+````
