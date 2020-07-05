@@ -9,3 +9,6 @@ chart-mysql
 *.tfvars
 .terraform/
 __pycache__
+vault-guides
+consul-helm
+vault-helm
