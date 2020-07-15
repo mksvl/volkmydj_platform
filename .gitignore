@@ -14,3 +14,4 @@ consul-helm
 vault-helm
 ncc
 other
+./kubernetes-gitops/microservices-demo
