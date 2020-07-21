@@ -3831,3 +3831,961 @@ configmap/nginx-config created
 service/nginx created
 deployment.apps/nginx created
 ````
+
+## kuberenetes-gitops
+
+### ==Подготовка GitLab репозитория==
+
+ - Переместим в проект microservices-demo код из GitHub репозитория:
+
+````
+git clone https://github.com/GoogleCloudPlatform/microservices-democd microservices-demogit remote add gitlab git@gitlab.com:volkmydj/microservices-demo.gitgit remote remove origingit push gitlab master
+`````
+
+### ==Создание Helm чартов==
+
+ - Подготовим Helm чарты для каждого микросервиса.
+
+ - Во всех манифестах, описывающих deployment, обязательно параметризуем  название образа и его тег:
+
+ ````yaml
+image:
+  repository: frontend
+  tag: v0.0.1
+`````
+
+- Получаем следующий результат:
+
+````
+tree -L 1 deploy/charts
+deploy/charts
+├── adservice
+├── cartservice
+├── checkoutservice
+├── currencyservice
+├── emailservice
+├── frontend
+├── loadgenerator
+├── paymentservice
+├── productcatalogservice
+├── recommendationservice
+└── shippingservice
+````
+
+### ==Подготовка Kubernetes кластера==
+
+- Развернем managed Kubernetes кластер в GCP с Istio как аддон GKE:
+
+`terraform init && terraform apply`
+
+````
+Apply complete! Resources: 3 added, 0 changed, 0 destroyed.
+
+Outputs:
+
+dev_output = {
+  "cluster_endpoint" = "35.195.131.29"
+  "external_ip_address" = "35.240.72.173"
+}
+````
+
+## ==Continuous Integration==
+
+- Соберем Docker образы для всех микросервисов и поместим данныеобразы в Docker Hub.
+
+`make build && make push`
+
+ - При тегировании образов используем подход `semver` , например, первому собранному образу логично выставить тег `v0.0.1`
+
+ ## ==Подготовка==
+
+ - Произведем установку Flux в кластер, в namespace flux:
+
+````
+helm upgrade --install flux fluxcd/flux -f flux.values.yaml --namespace flux --create-namespace
+Release "flux" does not exist. Installing it now.
+NAME: flux
+LAST DEPLOYED: Tue Jul 14 11:54:49 2020
+NAMESPACE: flux
+STATUS: deployed
+REVISION: 1
+TEST SUITE: None
+NOTES:
+Get the Git deploy key by either (a) running
+
+  kubectl -n flux logs deployment/flux | grep identity.pub | cut -d '"' -f2
+
+or by (b) installing fluxctl through
+https://docs.fluxcd.io/en/latest/references/fluxctl#installing-fluxctl
+and running:
+
+  fluxctl identity --k8s-fwd-ns flux
+````
+
+ - Установим Helm operator:
+
+`helm upgrade --install helm-operator fluxcd/helm-operator -f helm-operator.values.yaml --namespace flux`
+
+````
+helm upgrade --install helm-operator fluxcd/helm-operator -f helm-operator.values.yaml --namespace flux
+Release "helm-operator" does not exist. Installing it now.
+NAME: helm-operator
+LAST DEPLOYED: Tue Jul 14 11:59:23 2020
+NAMESPACE: flux
+STATUS: deployed
+REVISION: 1
+TEST SUITE: None
+NOTES:
+Flux Helm Operator docs https://docs.fluxcd.io
+
+Example:
+
+AUTH_VALUES=$(cat <<-END
+usePassword: true
+password: "redis_pass"
+usePasswordFile: true
+END
+)
+
+kubectl create secret generic redis-auth --from-literal=values.yaml="$AUTH_VALUES"
+
+cat <<EOF | kubectl apply -f -
+apiVersion: helm.fluxcd.io/v1
+kind: HelmRelease
+metadata:
+  name: redis
+  namespace: default
+spec:
+  releaseName: redis
+  chart:
+    repository: https://kubernetes-charts.storage.googleapis.com
+    name: redis
+    version: 10.5.7
+  valuesFrom:
+  - secretKeyRef:
+      name: redis-auth
+  values:
+    master:
+      persistence:
+        enabled: false
+    volumePermissions:
+      enabled: true
+    metrics:
+      enabled: true
+    cluster:
+      enabled: false
+EOF
+
+watch kubectl get hr
+````
+
+- Установим fluxctl на локальную машину для управления нашим CDинструментом. Руководство по установке
+
+````
+brew install fluxctl
+export FLUX_FORWARD_NAMESPACE=flux
+````
+
+- Добавим в свой профиль GitLab публичный ssh-ключ,при помощи которого flux получит доступ к нашему git-репозиторию:
+
+Значение ключа можно получить командой:
+
+`fluxctl identity --k8s-fwd-ns flux`
+
+ Пришло время проверить корректность работы Flux. Как мы уже знаем, Flux умеет автоматически синхронизировать состояние кластера и репозитория. Это касается не только сущностей HelmRelease, которыми мы будем оперировать для развертывания приложения, но и обыкновенных манифестов.
+
+Поместим манифест, описывающий namespace microservices-demo в директорию deploy/namespaces и сделаем push в GitLab:
+
+```yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: microservices-demo
+````
+
+Если все предыдущие шаги проделаны верно - в кластере через некоторое время будет создан namespace microservices-demo:
+
+````
+kubectl get ns
+NAME                 STATUS   AGE
+default              Active   61m
+flux                 Active   19m
+istio-system         Active   60m
+kube-node-lease      Active   61m
+kube-public          Active   61m
+kube-system          Active   61m
+microservices-demo   Active   55s
+````
+
+Также  в  логах  pod  с  flux  должна  появиться  строка,  описывающаядействия данного инструмента:
+
+````
+kubectl logs -n flux flux-5f56548c47-tmddx | grep "kubectl apply -f"
+ts=2020-07-14T09:13:29.652807422Z caller=sync.go:606 method=Sync cmd="kubectl apply -f -" took=1.213519592s err=null output="namespace/microservices-demo created"
+````
+
+### ==HelmRelease==
+
+Мы  подобрались  к  сущностям,  которыми  управляет  helm-operator - `HelmRelease`. \
+Для описания сущностей такого вида создадим отдельную директорию `deploy/releases`  и  поместим  туда  файл `frontend.yaml`  с  описанием конфигурации релиза.
+
+Опишем некоторые части манифеста HelmRelease:
+
+1. Аннотация разрешает автоматическое обновление релиза в Kubernetes кластере в случае изменения версии Docker образа в Registry.
+
+2. Указываем Flux следить за обновлениями конкретных Docker образовв Registry.
+
+Новыми считаются только образы, имеющие версию выше текущей и отвечающие маске семантического версионирования ~0.0 (например,0.0.1, 0.0.72, но не 1.0.0).
+
+3. Helm chart, используемый для развертывания релиза. В нашем случае указываем git-репозиторий, и директорию с чартом внутри него.
+
+4. Переопределяем переменные Helm chart. В дальнейшем Flux может сампереписывать эти значения и делать commit в git-репозиторий (например,изменять тег Docker образа при его обновлении в Registry)
+
+
+### ==HelmRelease | Проверка==
+
+ - Убедимся  что  HelmRelease  для  микросервиса  frontend  появился  вкластере:
+
+````
+kubectl get helmrelease -n microservices-demo
+NAME       RELEASE   PHASE       STATUS   MESSAGE                                                                       AGE
+frontend             Succeeded            Release was successful for Helm release 'frontend' in 'microservices-demo'.   73s
+````
+ - По статусу мы можем понять, что релиз применился успешно, и frontendзапущен. Дополнительно проверим это:
+
+````
+helm list -n microservices-demo
+NAME            NAMESPACE               REVISION        UPDATED                                 STATUS          CHART           APP VERSION
+frontend        microservices-demo      1               2020-07-14 18:40:11.033116958 +0000 UTC deployed        frontend-0.21.0 1.16.0
+````
+>  Командой  `fluxctl --k8s-fwd-ns flux sync`   можно инициировать синхронизацию вручную.
+
+
+### ==Обновление образа==
+
+1. Внесем изменение в исходный код микросервиса frontend и пересоберем образ, при этом инкрементирова в версию тега (до v0.0.2)
+
+2. Дождемся автоматического обновления релиза в Kubernetes кластере(для просмотра ревизий релиза можно использовать команду `helm history frontend -n microservices-demo``
+
+````
+helm history frontend -n microservices-demo
+REVISION        UPDATED                         STATUS          CHART           APP VERSION     DESCRIPTION
+1               Tue Jul 14 18:40:11 2020        superseded      frontend-0.21.0 1.16.0          Install complete
+2               Tue Jul 14 18:57:17 2020        deployed        frontend-0.21.0 1.16.0          Upgrade complete
+````
+
+3. Проверим, изменилось ли что-либо в git-репозитории (в частности, в файле `deploy/releases/frontend.yaml`)
+
+````yaml
+  values:
+    image:
+      repository: volkmydj/frontend
+      tag: v0.0.2
+````
+
+### ==Обновление Helm chart==
+
+ - Попробуем внести изменения в Helm chart `frontend` и поменять имя `deployment` на `frontend-hipster`
+
+ - Сделаем push измененного Helm chart в GitLab и понаблюдаем за процессом
+
+> Найдем в логах helm-operator строки, указывающие на механизм проверки изменений в Helm chart и определения необходимости обновить релиз. Приложим данные строки к описанию PR.
+
+```
+ts=2020-07-14T19:19:55.354921513Z caller=helm.go:69 component=helm version=v3 info="preparing upgrade for frontend" targetNamespace=microservices-demo release=frontend
+ts=2020-07-14T19:19:55.360631247Z caller=helm.go:69 component=helm version=v3 info="resetting values to the chart's original version" targetNamespace=microservices-demo release=frontend
+ts=2020-07-14T19:19:55.885389378Z caller=helm.go:69 component=helm version=v3 info="performing update for frontend" targetNamespace=microservices-demo release=frontend
+ts=2020-07-14T19:19:55.914393614Z caller=helm.go:69 component=helm version=v3 info="creating upgraded release for frontend" targetNamespace=microservices-demo release=frontend
+ts=2020-07-14T19:19:55.932189265Z caller=helm.go:69 component=helm version=v3 info="checking 4 resources for changes" targetNamespace=microservices-demo release=frontend
+ts=2020-07-14T19:19:55.942262228Z caller=helm.go:69 component=helm version=v3 info="Looks like there are no changes for Service \"frontend\"" targetNamespace=microservices-demo release=frontend
+ts=2020-07-14T19:19:55.961311866Z caller=helm.go:69 component=helm version=v3 info="Created a new Deployment called \"frontend\" in microservices-demo\n" targetNamespace=microservices-demo release=frontend
+ts=2020-07-14T19:19:55.975967644Z caller=helm.go:69 component=helm version=v3 info="Looks like there are no changes for Gateway \"frontend\"" targetNamespace=microservices-demo release=frontend
+ts=2020-07-14T19:19:55.999913696Z caller=helm.go:69 component=helm version=v3 info="Looks like there are no changes for VirtualService \"frontend\"" targetNamespace=microservices-demo release=frontend
+ts=2020-07-14T19:19:56.026395866Z caller=helm.go:69 component=helm version=v3 info="updating status for upgraded release for frontend" targetNamespace=microservices-demo release=frontend
+ts=2020-07-14T19:19:56.10520717Z caller=release.go:309 component=release release=frontend targetNamespace=microservices-demo resource=microservices-demo:helmrelease/frontend helmVersion=v3 info="upgrade succeeded" revision=bc50fcfe093048c5e7879c2b160745f7c222aa60 phase=upgrade
+ts=2020-07-14T19:20:36.42813845Z caller=release.go:75 component=release release=frontend targetNamespace=microservices-demo resource=microservices-demo:helmrelease/frontend helmVersion=v3 info="starting sync run"
+ts=2020-07-14T19:20:36.688995131Z caller=release.go:251 component=release release=frontend targetNamespace=microservices-demo resource=microservices-demo:helmrelease/frontend helmVersion=v3 info="running dry-run upgrade to compare with release version '4'" action=dry-run-compare
+ts=2020-07-14T19:20:36.692345569Z caller=helm.go:69 component=helm version=v3 info="preparing upgrade for frontend" targetNamespace=microservices-demo release=frontend
+ts=2020-07-14T19:20:36.698738803Z caller=helm.go:69 component=helm version=v3 info="resetting values to the chart's original version" targetNamespace=microservices-demo release=frontend
+ts=2020-07-14T19:20:37.191880904Z caller=helm.go:69 component=helm version=v3 info="performing update for frontend" targetNamespace=microservices-demo release=frontend
+ts=2020-07-14T19:20:37.203999765Z caller=helm.go:69 component=helm version=v3 info="dry run for frontend" targetNamespace=microservices-demo release=frontend
+ts=2020-07-14T19:20:37.228984538Z caller=release.go:273 component=release release=frontend targetNamespace=microservices-demo resource=microservices-demo:helmrelease/frontend helmVersion=v3 info="no changes" phase=dry-run-compare
+````
+
+### ==Самостоятельное задание==
+
+ - Добавьте манифесты HelmRelease для всех микросервисов входящих всостав HipsterShop
+ - Проверим, что все микросервисы успешно развернулись в Kubernetes кластере
+
+````
+kubectl get helmrelease -n microservices-demo
+NAME                    RELEASE                 PHASE       STATUS     MESSAGE                                                                                    AGE
+adservice               adservice               Succeeded   deployed   Release was successful for Helm release 'adservice' in 'microservices-demo'.               62s
+cartservice             cartservice             Succeeded   deployed   Release was successful for Helm release 'cartservice' in 'microservices-demo'.             62s
+checkoutservice         checkoutservice         Succeeded   deployed   Release was successful for Helm release 'checkoutservice' in 'microservices-demo'.         62s
+currencyservice         currencyservice         Succeeded   deployed   Release was successful for Helm release 'currencyservice' in 'microservices-demo'.         62s
+emailservice            emailservice            Succeeded   deployed   Release was successful for Helm release 'emailservice' in 'microservices-demo'.            62s
+frontend                frontend                Succeeded   deployed   Release was successful for Helm release 'frontend' in 'microservices-demo'.                61m
+loadgenerator           loadgenerator           Succeeded   deployed   Release was successful for Helm release 'loadgenerator' in 'microservices-demo'.           62s
+paymentservice          paymentservice          Succeeded   deployed   Release was successful for Helm release 'paymentservice' in 'microservices-demo'.          62s
+productcatalogservice   productcatalogservice   Succeeded   deployed   Release was successful for Helm release 'productcatalogservice' in 'microservices-demo'.   62s
+recommendationservice   recommendationservice   Succeeded   deployed   Release was successful for Helm release 'recommendationservice' in 'microservices-demo'.   62s
+shippingservice         shippingservice         Succeeded   deployed   Release was successful for Helm release 'shippingservice' in 'microservices-demo'.         62s
+````
+
+````
+kubectl get po -n microservices-demo
+NAME                                     READY   STATUS     RESTARTS   AGE
+adservice-55f877744c-khl7s               1/1     Running    0          24m
+cartservice-d8b7586f8-xzg5h              1/1     Running    1          24m
+cartservice-redis-master-0               1/1     Running    0          24m
+checkoutservice-69d884b5f7-l7fmh         1/1     Running    0          24m
+currencyservice-77fd6f945-l6ptn          1/1     Running    0          24m
+emailservice-665ccb9557-j8pgp            1/1     Running    0          24m
+frontend-b6f7c8f8f-l8sst                 1/1     Running    0          44m
+loadgenerator-6fcbb4ffdd-9qwxx           0/1     Init:0/1   0          51s
+paymentservice-7f74787749-bj8c4          1/1     Running    0          24m
+productcatalogservice-6c9989c6b9-wg4w8   1/1     Running    0          24m
+recommendationservice-554ccc4c5f-9zjsk   1/1     Running    0          24m
+shippingservice-65558c8477-d7vbt         1/1     Running    0          24m
+````
+
+### ==Установка Istio==
+
+Т.к. Istio у нас устанавливается как аддон к кластеру GKE, то этот шаг нам не понадобиться и мы можем установить просто утилиту:
+
+`brew install istioctl`
+
+### ==Установка Flagger==
+
+1. Добавляем helm-репозиторий flagger:
+
+````
+helm repo add flagger https://flagger.app
+"flagger" has been added to your repositories
+````
+
+2. Устанавливаем CRD для Flagger:
+
+````
+kubectl apply -fhttps://raw.githubusercontent.com/weaveworks/flagger/master/artifacts/flagger/crd.yaml
+customresourcedefinition.apiextensions.k8s.io/canaries.flagger.app created
+customresourcedefinition.apiextensions.k8s.io/metrictemplates.flagger.app created
+customresourcedefinition.apiextensions.k8s.io/alertproviders.flagger.app created
+````
+
+3. Установливаем flagger с указанием использовать Istio:
+
+````
+helm upgrade --install flagger flagger/flagger \
+--namespace=istio-system \
+--set crd.create=false \
+--set meshProvider=istio \
+--set metricsServer=http://prometheus:9090
+````
+
+````
+Release "flagger" does not exist. Installing it now.
+NAME: flagger
+LAST DEPLOYED: Tue Jul 14 23:54:05 2020
+NAMESPACE: istio-system
+STATUS: deployed
+REVISION: 1
+TEST SUITE: None
+NOTES:
+Flagger installed
+````
+
+### ==Istio | Sidecar Injection==
+
+ - Изменим созданное ранее описание namespace `microservices-demo`:
+
+```yaml
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: microservices-demo
+  labels:
+    istio-injection: enabled
+````
+
+Выделенная строка указывает на необходимость добавить в каждый podsidecar контейнер с envoy proxy.
+
+> После  синхронизации  проверку  можно  выполнить  командой `kubectl get ns microservices-demo --show-labels``
+
+````
+kubectl get ns microservices-demo --show-labels
+NAME                 STATUS   AGE   LABELS
+microservices-demo   Active   11h   fluxcd.io/sync-gc-mark=sha256.nR39Qg0XG0r3h4OKBshXoTK_gbhpeoAzKUK1fUzNmNg,istio-injection=enabled
+````
+
+ - Самый простой способ добавить sidecar контейнер в уже запущенныеpod - удалить их:
+
+````
+kubectl delete pods --all -n microservices-demo
+pod "adservice-55f877744c-khl7s" deleted
+pod "cartservice-d8b7586f8-xzg5h" deleted
+pod "cartservice-redis-master-0" deleted
+pod "checkoutservice-69d884b5f7-l7fmh" deleted
+pod "currencyservice-77fd6f945-l6ptn" deleted
+pod "emailservice-665ccb9557-j8pgp" deleted
+pod "frontend-b6f7c8f8f-8xf9n" deleted
+pod "loadgenerator-694489f785-8zthq" deleted
+pod "paymentservice-7f74787749-bj8c4" deleted
+pod "productcatalogservice-6c9989c6b9-wg4w8" deleted
+pod "recommendationservice-554ccc4c5f-9zjsk" deleted
+pod "shippingservice-65558c8477-d7vbt" deleted
+````
+
+ - После  этого  можно  проверить,  что  контейнер  с  названием istio-proxy появился внутри каждого pod:
+
+````
+kubectl describe pod -l app=frontend -n microservices-demo
+Name:           frontend-b6f7c8f8f-6mnbh
+Namespace:      microservices-demo
+Priority:       0
+Node:           gke-dev-dev-ca0df695-5c1z/10.132.0.16
+Start Time:     Wed, 15 Jul 2020 00:01:41 +0300
+Labels:         app=frontend
+                pod-template-hash=b6f7c8f8f
+                security.istio.io/tlsMode=istio
+Annotations:    cni.projectcalico.org/podIP: 10.8.3.16/32
+                sidecar.istio.io/status:
+                  {"version":"e08c22464c16dcd08d4d59263d2012385a58bd5e7871a19f2ea2ef2de85ceba3","initContainers":["istio-init"],"containers":["istio-proxy"]...
+Status:         Running
+IP:             10.8.3.16
+Controlled By:  ReplicaSet/frontend-b6f7c8f8f
+Init Containers:
+  istio-init:
+    Container ID:  docker://4745f25ed7cd8f8bbbd70eb36e4bc7c64aabc93b613a4f17b2f26f0a030b8cc5
+    Image:         gke.gcr.io/istio/proxyv2:1.4.10-gke.4
+    Image ID:      docker-pullable://gke.gcr.io/istio/proxyv2@sha256:4b40d7dd5401de80569c76c1d4aa8353d844f4d16b8153ebc125d37fad498e17
+    Port:          <none>
+    Host Port:     <none>
+    Command:
+      istio-iptables
+      -p
+      15001
+      -z
+      15006
+      -u
+      1337
+      -m
+      REDIRECT
+      -i
+      *
+      -x
+
+      -b
+      *
+      -d
+      15020
+    State:          Terminated
+      Reason:       Completed
+      Exit Code:    0
+      Started:      Wed, 15 Jul 2020 00:01:45 +0300
+      Finished:     Wed, 15 Jul 2020 00:01:45 +0300
+    Ready:          True
+    Restart Count:  0
+    Limits:
+      cpu:     100m
+      memory:  50Mi
+    Requests:
+      cpu:        10m
+      memory:     10Mi
+    Environment:  <none>
+    Mounts:
+      /var/run/secrets/kubernetes.io/serviceaccount from default-token-cr9jm (ro)
+Containers:
+  server:
+    Container ID:   docker://eb0cfe13aa07b50deee35a5bd2c141142d1641378be1720cb6835ac5f58e1980
+    Image:          volkmydj/frontend:v0.0.2
+    Image ID:       docker-pullable://volkmydj/frontend@sha256:9e2e159530bfcb46b4e403c84bb17683e4cbb1e99841ad3c4fb6a9cfcd5e9633
+    Port:           8080/TCP
+    Host Port:      0/TCP
+    State:          Running
+      Started:      Wed, 15 Jul 2020 00:01:50 +0300
+    Ready:          True
+    Restart Count:  0
+    Limits:
+      cpu:     200m
+      memory:  128Mi
+    Requests:
+      cpu:      100m
+      memory:   64Mi
+    Liveness:   http-get http://:8080/_healthz delay=10s timeout=1s period=10s #success=1 #failure=3
+    Readiness:  http-get http://:8080/_healthz delay=10s timeout=1s period=10s #success=1 #failure=3
+    Environment:
+      PORT:                          8080
+      PRODUCT_CATALOG_SERVICE_ADDR:  productcatalogservice:3550
+      CURRENCY_SERVICE_ADDR:         currencyservice:7000
+      CART_SERVICE_ADDR:             cartservice:7070
+      RECOMMENDATION_SERVICE_ADDR:   recommendationservice:8080
+      SHIPPING_SERVICE_ADDR:         shippingservice:50051
+      CHECKOUT_SERVICE_ADDR:         checkoutservice:5050
+      AD_SERVICE_ADDR:               adservice:9555
+      JAEGER_SERVICE_ADDR:           jaeger-collector.observability.svc.cluster.local:14268
+    Mounts:
+      /var/run/secrets/kubernetes.io/serviceaccount from default-token-cr9jm (ro)
+  istio-proxy:
+    Container ID:  docker://48e2e90a197bebf1f91b26f80c7808b90e45bb6155b79970f2ccdc932fe386aa
+    Image:         gke.gcr.io/istio/proxyv2:1.4.10-gke.4
+    Image ID:      docker-pullable://gke.gcr.io/istio/proxyv2@sha256:4b40d7dd5401de80569c76c1d4aa8353d844f4d16b8153ebc125d37fad498e17
+    Port:          15090/TCP
+    Host Port:     0/TCP
+    Args:
+      proxy
+      sidecar
+      --domain
+      $(POD_NAMESPACE).svc.cluster.local
+      --configPath
+      /etc/istio/proxy
+      --binaryPath
+      /usr/local/bin/envoy
+      --serviceCluster
+      frontend.$(POD_NAMESPACE)
+      --drainDuration
+      45s
+      --parentShutdownDuration
+      1m0s
+      --discoveryAddress
+      istio-pilot.istio-system:15010
+      --zipkinAddress
+      zipkin.istio-system:9411
+      --dnsRefreshRate
+      300s
+      --connectTimeout
+      10s
+      --proxyAdminPort
+      15000
+      --concurrency
+      2
+      --controlPlaneAuthPolicy
+      NONE
+      --statusPort
+      15020
+      --applicationPorts
+      8080
+    State:          Running
+      Started:      Wed, 15 Jul 2020 00:01:51 +0300
+    Ready:          True
+    Restart Count:  0
+    Limits:
+      cpu:     2
+      memory:  1Gi
+    Requests:
+      cpu:      100m
+      memory:   128Mi
+    Readiness:  http-get http://:15020/healthz/ready delay=1s timeout=1s period=2s #success=1 #failure=30
+    Environment:
+      POD_NAME:                          frontend-b6f7c8f8f-6mnbh (v1:metadata.name)
+      ISTIO_META_POD_PORTS:              [
+                                             {"name":"http","containerPort":8080,"protocol":"TCP"}
+                                         ]
+      ISTIO_META_CLUSTER_ID:             Kubernetes
+      POD_NAMESPACE:                     microservices-demo (v1:metadata.namespace)
+      INSTANCE_IP:                        (v1:status.podIP)
+      SERVICE_ACCOUNT:                    (v1:spec.serviceAccountName)
+      ISTIO_META_POD_NAME:               frontend-b6f7c8f8f-6mnbh (v1:metadata.name)
+      ISTIO_META_CONFIG_NAMESPACE:       microservices-demo (v1:metadata.namespace)
+      SDS_ENABLED:                       false
+      ISTIO_META_INTERCEPTION_MODE:      REDIRECT
+      ISTIO_META_INCLUDE_INBOUND_PORTS:  8080
+      ISTIO_METAJSON_LABELS:             {"app":"frontend","pod-template-hash":"b6f7c8f8f"}
+
+      ISTIO_META_WORKLOAD_NAME:          frontend
+      ISTIO_META_OWNER:                  kubernetes://apis/apps/v1/namespaces/microservices-demo/deployments/frontend
+    Mounts:
+      /etc/certs/ from istio-certs (ro)
+      /etc/istio/proxy from istio-envoy (rw)
+      /var/run/secrets/kubernetes.io/serviceaccount from default-token-cr9jm (ro)
+Conditions:
+  Type              Status
+  Initialized       True
+  Ready             True
+  ContainersReady   True
+  PodScheduled      True
+Volumes:
+  default-token-cr9jm:
+    Type:        Secret (a volume populated by a Secret)
+    SecretName:  default-token-cr9jm
+    Optional:    false
+  istio-envoy:
+    Type:       EmptyDir (a temporary directory that shares a pod's lifetime)
+    Medium:     Memory
+    SizeLimit:  <unset>
+  istio-certs:
+    Type:        Secret (a volume populated by a Secret)
+    SecretName:  istio.default
+    Optional:    true
+QoS Class:       Burstable
+Node-Selectors:  <none>
+Tolerations:     node.kubernetes.io/not-ready:NoExecute for 300s
+                 node.kubernetes.io/unreachable:NoExecute for 300s
+Events:
+  Type     Reason     Age    From                                Message
+  ----     ------     ----   ----                                -------
+  Normal   Scheduled  2m29s  default-scheduler                   Successfully assigned microservices-demo/frontend-b6f7c8f8f-6mnbh to gke-dev-dev-ca0df695-5c1z
+  Normal   Pulled     2m26s  kubelet, gke-dev-dev-ca0df695-5c1z  Container image "gke.gcr.io/istio/proxyv2:1.4.10-gke.4" already present on machine
+  Normal   Created    2m26s  kubelet, gke-dev-dev-ca0df695-5c1z  Created container istio-init
+  Normal   Started    2m25s  kubelet, gke-dev-dev-ca0df695-5c1z  Started container istio-init
+  Normal   Pulling    2m25s  kubelet, gke-dev-dev-ca0df695-5c1z  Pulling image "volkmydj/frontend:v0.0.2"
+  Normal   Pulled     2m20s  kubelet, gke-dev-dev-ca0df695-5c1z  Successfully pulled image "volkmydj/frontend:v0.0.2"
+  Normal   Created    2m20s  kubelet, gke-dev-dev-ca0df695-5c1z  Created container server
+  Normal   Started    2m20s  kubelet, gke-dev-dev-ca0df695-5c1z  Started container server
+  Normal   Pulled     2m20s  kubelet, gke-dev-dev-ca0df695-5c1z  Container image "gke.gcr.io/istio/proxyv2:1.4.10-gke.4" already present on machine
+  Normal   Created    2m19s  kubelet, gke-dev-dev-ca0df695-5c1z  Created container istio-proxy
+  Normal   Started    2m19s  kubelet, gke-dev-dev-ca0df695-5c1z  Started container istio-proxy
+  Warning  Unhealthy  2m18s  kubelet, gke-dev-dev-ca0df695-5c1z  Readiness probe failed: HTTP probe failed with statuscode: 503
+````
+
+### == Доступ к frontend==
+
+На  текущий  момент  у  нас  отсутствует  ingress  и  мы  не  можем  получитьдоступ к frontend снаружи кластера.
+
+В  то  же  время  Istio  в  качестве  альтернативы  классическому  ingressпредлагает свой набор абстракций.
+
+Чтобы   настроить   маршрутизацию   трафика   к   приложению   сиспользованием  Istio,  нам  необходимо  добавить  ресурсы   и
+
+ - Создаем  директорию `deploy/istio`  и  помещаем в нее  следующие манифесты:
+
+- `frontend-vs.yaml`
+- `frontend-gw.yaml`
+
+
+
+### ==Istio | VirtualService==
+
+`frontend-vs.yaml`
+
+```yaml
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: frontend
+  namespace: microservices-demo
+spec:
+  hosts:
+    - "*"
+  gateways:
+    - frontend
+  http:
+    - route:
+        - destination:
+            host: frontend
+            port:
+              number: 80
+````
+
+### ==Istio | Gateway==
+
+`frontend-gw.yaml`
+
+```yaml
+apiVersion: networking.istio.io/v1alpha3
+kind: Gateway
+metadata:
+  name: frontend
+  namespace: microservices-demo
+spec:
+  selector:
+    istio: ingressgateway
+  servers:
+    - port:
+        number: 80
+        name: http
+        protocol: HTTP
+      hosts:
+        - "*"
+````
+
+ - Созданный Gateway можно увидеть следующим образом:
+
+````
+kubectl get gateway -n microservices-demo
+NAME       AGE
+frontend   46m
+````
+
+ - Для  доступа  снаружи  нам  понадобится  EXTERNAL-IP  сервиса `istio-ingressgateway`
+
+````
+kubectl get svc istio-ingressgateway -n istio-system
+NAME                   TYPE           CLUSTER-IP      EXTERNAL-IP      PORT(S)                                                                                                                                      AGE
+istio-ingressgateway   LoadBalancer   10.11.251.158   104.199.16.158   15020:31756/TCP,80:30858/TCP,443:31456/TCP,31400:31469/TCP,15029:30773/TCP,15030:31894/TCP,15031:30644/TCP,15032:32562/TCP,15443:31236/TCP   13h
+````
+
+### ==Istio | Самостоятельное задание ==
+
+В  нашей  ситуации  ресурсы `Gateway`  и `VirtualService`  логическия вляются  частью  инфраструктурного  кода,  описывающего  окружение микросервиса `frontend`.   Поэтому,   оправданно   будет   перенести манифесты в Helm chart.
+
+Дополним  Helm  chart `frontend`  манифестами `gateway.yaml`  и `virtualService.yaml`.  Оригинальные  манифесты  удалим вместе  с директорией `deploy/istio`.
+
+### ==Flagger | Canary==
+
+Перейдем  непосредственно  к  настройке  канареечных  релизов.
+
+ - Добавьте в Helm chart frontend еще один файл - `canary.yaml`
+
+В  нем  будем  хранить  описание  стратегии,  по  которой  необходимообновлять данный микросервис.
+
+`canary.yaml``
+
+```yaml
+apiVersion: flagger.app/v1alpha3
+kind: Canary
+metadata:
+  name: frontend
+  namespace: microservices-demo
+spec:
+  provider: istio
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: frontend
+  service:
+    port: 80
+    targetPort: 8080
+    gateways:
+    - frontend
+    hosts:
+    - "*"
+    trafficPolicy:
+      tls:
+        mode: DISABLE
+  analysis:
+    interval: 30s
+    threshold: 5
+    maxWeight: 30
+    stepWeight: 5
+    metrics:
+    - name: request-success-rate
+      threshold: 99
+      interval: 30s
+````
+
+Проверим, что Flagger:
+ - Успешно инициализировал canary ресурс `frontend`:
+
+````
+NAME       STATUS        WEIGHT   LASTTRANSITIONTIME
+frontend   Initialized   0        2020-07-14T22:15:05Z
+````
+
+- Обновил pod, добавив ему к названию постфикс `primary`:
+
+````
+kubectl get pods -n microservices-demo -l app=frontend-primary
+NAME                                READY   STATUS    RESTARTS   AGE
+frontend-primary-8665f87f76-pmzsv   2/2     Running   0          4m38s
+````
+
+ - Попробуем  провести  релиз.  Соберем  новый  образ  frontend  с  тегом v0.0.3 и сделаем push в Docker Hub.
+
+Через  некоторое  время  в  выводе kubectl describe canaryfrontend -n  microservices-demo  мы  сможет  наблюдать  следующую картину:
+
+`fluxctl list-images -n microservices-demo`
+
+````
+kubectl get canaries -n microservices-demo
+NAME               STATUS        WEIGHT   LASTTRANSITIONTIME
+frontend-boutique   Progressing   30       2020-07-14T18:49:40Z
+````
+
+````
+kubectl get canaries -n microservices-demo
+NAME               STATUS      WEIGHT   LASTTRANSITIONTIME
+frontend-boutique   Succeeded   0        2020-07-14T18:51:09Z
+````
+
+````
+microservices-demo:helmrelease/frontend                  chart-image        volkmydj/frontend
+                                                                            '-> v0.0.6                      14 Jul 20 18:52 UTC
+                                                                                v0.0.5                      14 Jul 20 18:52 UTC
+                                                                                v0.0.4                      14 Jul 20 18:52 UTC
+                                                                                v0.0.3                      14 Jul 20 18:52 UTC
+                                                                                v0.0.2                      14 Jul 20 18:52 UTC
+                                                                                v0.0.1                      14 Jul 20 07:09 UTC
+````
+`kubectl describe canary frontend -n microservices-demo`
+
+````
+  Normal   Synced  7m24s (x2 over 18m)    flagger  New revision detected! Scaling up frontend.microservices-demo
+  Normal   Synced  5m54s                  flagger  New revision detected! Restarting analysis for frontend.microservices-demo
+  Normal   Synced  5m24s (x3 over 18m)    flagger  Advance frontend.microservices-demo canary weight 5
+  Normal   Synced  5m24s (x3 over 18m)    flagger  Starting canary analysis for frontend.microservices-demo
+  Normal   Synced  4m54s (x2 over 6m23s)  flagger  Advance frontend.microservices-demo canary weight 10
+  Normal   Synced  4m24s                  flagger  Advance frontend.microservices-demo canary weight 15
+  Normal   Synced  3m53s                  flagger  Advance frontend.microservices-demo canary weight 20
+  Normal   Synced  3m24s                  flagger  Advance frontend.microservices-demo canary weight 25
+  Normal   Synced  2m53s                  flagger  Advance frontend.microservices-demo canary weight 30
+  Normal   Synced  84s (x3 over 2m24s)    flagger  (combined from similar events): Promotion completed! Scaling down frontend.microservices-demo
+````
+
+
+### == Flagger | Задание со ⭐==
+
+ - Реализуем канареечное развертывание для одного из оставшихся микросервисов, например `checkoutservice`
+
+````
+NAME              STATUS        WEIGHT   LASTTRANSITIONTIME
+checkoutservice   Progressing   0        2020-07-15T18:16:22Z
+frontend          Succeeded     0        2020-07-15T16:28:42Z
+> kubectl get canary -n microservices-demo
+NAME              STATUS        WEIGHT   LASTTRANSITIONTIME
+checkoutservice   Progressing   5        2020-07-15T18:16:52Z
+frontend          Succeeded     0        2020-07-15T16:28:42Z
+> kubectl get canary -n microservices-demo
+NAME              STATUS        WEIGHT   LASTTRANSITIONTIME
+checkoutservice   Progressing   20       2020-07-15T18:18:22Z
+frontend          Succeeded     0        2020-07-15T16:28:42Z
+> kubectl get canary -n microservices-demo
+NAME              STATUS        WEIGHT   LASTTRANSITIONTIME
+checkoutservice   Progressing   25       2020-07-15T18:18:52Z
+frontend          Succeeded     0        2020-07-15T16:28:42Z
+> kubectl get canary -n microservices-demo
+NAME              STATUS        WEIGHT   LASTTRANSITIONTIME
+checkoutservice   Progressing   25       2020-07-15T18:18:52Z
+frontend          Succeeded     0        2020-07-15T16:28:42Z
+> kubectl get canary -n microservices-demo
+NAME              STATUS      WEIGHT   LASTTRANSITIONTIME
+checkoutservice   Promoting   0        2020-07-15T18:19:52Z
+frontend          Succeeded   0        2020-07-15T16:28:42Z
+> kubectl get canary -n microservices-demo
+NAME              STATUS       WEIGHT   LASTTRANSITIONTIME
+checkoutservice   Finalising   0        2020-07-15T18:20:22Z
+frontend          Succeeded    0        2020-07-15T16:28:42Z
+> kubectl get canary -n microservices-demo
+NAME              STATUS      WEIGHT   LASTTRANSITIONTIME
+checkoutservice   Succeeded   0        2020-07-15T18:20:52Z
+frontend          Succeeded   0        2020-07-15T16:28:42Z
+````
+
+ - Реализуем получение нотификаций о релизах в Slack.
+
+```
+helm upgrade -i flagger flagger/flagger \
+--namespace=istio-system \
+--set crd.create=false \
+--set meshProvider=istio \
+--set metricsServer=http://prometheus:9090 \
+--set slack.url=https://hooks.slack.com/services/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 \
+--set slack.channel=flagger-notification \
+--set slack.user=flagger
+````
+
+
+![alt text](screenshots/slack.png "Slack notification")​
+
+
+### == Distributed Tracing | Задание со ⭐ ==
+
+ - Установим Jaeger и научимся собирать трейсы:
+   - Непосредственно с микросервисов
+   - С sidecar контейнеров istio-proxy
+
+
+Установим Jaeger с помощью istio оператора и профиля demo
+
+````
+kubectl apply -f - <<EOF
+apiVersion: install.istio.io/v1alpha1
+kind: IstioOperator
+metadata:
+  namespace: istio-system
+  name: istio
+spec:
+  profile: demo
+EOF
+````
+
+ - Трейсы с istio-proxy sidecar контейнеров доступны в стоке.
+
+ - Для получения трейсов непосредственно из микросервисов следует указать в   `templates` манифестов деплойментов значение переменной окружения:
+
+```yaml
+env:
+          - name: JAEGER_SERVICE_ADDR
+            value: "jaeger-collector.observability.svc.cluster.local:14268"
+````
+
+ - `istioctl dashboard jaeger`
+
+ - Переходим в UI jaeger и выбираем сервисы:
+   - для istio-proxy: `<servicename>.microservice.demo`
+   - для микросервисов: `<servicename>`
+
+![alt text](screenshots/jaegger-1.png "Slack notification")​
+
+
+![alt text](screenshots/jaegger-2.png "Slack notification")​
+
+
+### == УстановкаIstio|Заданиесо⭐==
+
+Используем istio-operator
+
+`istioctl operator init`
+
+`kubectl create ns istio-system`
+
+````
+kubectl apply -f - <<EOF
+apiVersion: install.istio.io/v1alpha1
+kind: IstioOperator
+metadata:
+  namespace: istio-system
+  name: istio
+spec:
+  profile: demo
+EOF
+
+namespace/istio-system created
+istiooperator.install.istio.io/istio created
+````
+ - Проверяем:
+
+````
+kubectl get po -n istio-system
+NAME                                             READY   STATUS      RESTARTS   AGE
+flagger-b969c54b8-xbntg                          1/1     Running     0          104m
+grafana-5dc4b4676c-6lfnm                         1/1     Running     0          3h59m
+istio-citadel-78b9b5b589-twmk9                   1/1     Running     0          7h47m
+istio-egressgateway-57b9c7d65b-nttbx             0/1     Running     0          3h25m
+istio-galley-79bd448645-5ntkz                    1/1     Running     0          7h47m
+istio-ingressgateway-b4f8986c4-mblc9             1/1     Running     0          7h47m
+istio-pilot-dc558d859-5v4fv                      2/2     Running     1          7h47m
+istio-policy-8664dd6c4-lxcjf                     2/2     Running     3          7h47m
+istio-security-post-install-1.4.10-gke.4-529pg   0/1     Completed   0          7h47m
+istio-sidecar-injector-7f85d7f7c4-j4w5s          1/1     Running     0          7h47m
+istio-telemetry-69b6477c5f-fswvt                 2/2     Running     4          7h47m
+istio-tracing-8584b4d7f9-79z45                   1/1     Running     0          3h59m
+istiod-7968744c5b-8tlj4                          1/1     Running     0          3h59m
+kiali-6f457f5964-cblrm                           1/1     Running     0          3h59m
+prometheus-7c4b6d955-qvtbq                       2/2     Running     0          3h59m
+promsd-696bcc5b96-pjs2v                          2/2     Running     1          7h47m
+````
+
+````
+kubectl get svc -n istio-system
+NAME                        TYPE           CLUSTER-IP      EXTERNAL-IP      PORT(S)                                                                                                                                      AGE
+grafana                     ClusterIP      10.11.243.71    <none>           3000/TCP                                                                                                                                     4h
+istio-citadel               ClusterIP      10.11.247.234   <none>           8060/TCP,15014/TCP                                                                                                                           7h47m
+istio-egressgateway         ClusterIP      10.11.251.0     <none>           80/TCP,443/TCP,15443/TCP                                                                                                                     4h
+istio-galley                ClusterIP      10.11.243.29    <none>           443/TCP,15014/TCP,9901/TCP                                                                                                                   7h47m
+istio-ingressgateway        LoadBalancer   10.11.255.207   104.155.29.231   15020:30675/TCP,80:31091/TCP,443:32711/TCP,31400:30430/TCP,15029:31296/TCP,15030:30199/TCP,15031:30021/TCP,15032:30114/TCP,15443:31830/TCP   7h47m
+istio-pilot                 ClusterIP      10.11.254.170   <none>           15010/TCP,15011/TCP,8080/TCP,15014/TCP                                                                                                       7h47m
+istio-policy                ClusterIP      10.11.240.19    <none>           9091/TCP,15004/TCP,15014/TCP                                                                                                                 7h47m
+istio-sidecar-injector      ClusterIP      10.11.245.141   <none>           443/TCP,15014/TCP                                                                                                                            7h47m
+istio-telemetry             ClusterIP      10.11.240.70    <none>           9091/TCP,15004/TCP,15014/TCP,42422/TCP                                                                                                       7h47m
+istiod                      ClusterIP      10.11.248.83    <none>           15010/TCP,15012/TCP,443/TCP,15014/TCP,853/TCP                                                                                                4h
+jaeger-agent                ClusterIP      None            <none>           5775/UDP,6831/UDP,6832/UDP                                                                                                                   4h
+jaeger-collector            ClusterIP      10.11.253.132   <none>           14267/TCP,14268/TCP,14250/TCP                                                                                                                4h
+jaeger-collector-headless   ClusterIP      None            <none>           14250/TCP                                                                                                                                    4h
+jaeger-query                ClusterIP      10.11.253.203   <none>           16686/TCP                                                                                                                                    4h
+kiali                       ClusterIP      10.11.245.148   <none>           20001/TCP                                                                                                                                    4h
+prometheus                  ClusterIP      10.11.250.54    <none>           9090/TCP                                                                                                                                     4h
+promsd                      ClusterIP      10.11.240.196   <none>           9090/TCP                                                                                                                                     7h47m
+tracing                     ClusterIP      10.11.245.29    <none>           80/TCP                                                                                                                                       4h
+zipkin                      ClusterIP      10.11.252.234   <none>           9411/TCP                                                                                                                                     4h
+````
