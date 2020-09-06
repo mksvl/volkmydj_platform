@@ -4789,3 +4789,512 @@ promsd                      ClusterIP      10.11.240.196   <none>           9090
 tracing                     ClusterIP      10.11.245.29    <none>           80/TCP                                                                                                                                       4h
 zipkin                      ClusterIP      10.11.252.234   <none>           9411/TCP                                                                                                                                     4h
 ````
+
+
+## kubernetes-storage
+
+### Установка CSI драйвер и тестирование функционала snapshots:
+
+1. Разворачиваем кластер kind:
+
+`kind create cluster --config cluster/cluster.yaml `
+
+2. Скачиваем репозиторий с CSI драйвером:
+
+`git clone https://github.com/kubernetes-csi/csi-driver-host-path.git`
+
+3. Устанавливаем VolumeSnapshot CRD и Snapshot controller. Применяем CRD:
+
+```
+export SNAPSHOTTER_VERSION=v2.0.1
+kubectl apply -f https://raw.githubusercontent.com/kubernetes-csi/external-snapshotter/$SNAPSHOTTER_VERSION/config/crd/snapshot.storage.k8s.io_volumesnapshotclasses.yaml
+kubectl apply -f https://raw.githubusercontent.com/kubernetes-csi/external-snapshotter/$SNAPSHOTTER_VERSION/config/crd/snapshot.storage.k8s.io_volumesnapshotcontents.yaml
+kubectl apply -f https://raw.githubusercontent.com/kubernetes-csi/external-snapshotter/$SNAPSHOTTER_VERSION/config/crd/snapshot.storage.k8s.io_volumesnapshots.yaml
+kubectl apply -f https://raw.githubusercontent.com/kubernetes-csi/external-snapshotter/$SNAPSHOTTER_VERSION/deploy/kubernetes/snapshot-controller/rbac-snapshot-controller.yaml
+kubectl apply -f https://raw.githubusercontent.com/kubernetes-csi/external-snapshotter/$SNAPSHOTTER_VERSION/deploy/kubernetes/snapshot-controller/setup-snapshot-controller.yaml
+```
+
+4. Устанавливаем CSI драйвер:
+
+`./csi-driver-host-path/deploy/kubernetes-1.18/deploy.sh`
+
+5. Запускаем приложение:
+
+`k apply -f hw/`
+
+```
+persistentvolumeclaim/storage-pvc unchanged
+storageclass.storage.k8s.io/csi-hostpath-sc unchanged
+volumesnapshot.snapshot.storage.k8s.io/snapshot unchanged
+```
+
+Проверяем:
+
+```
+kubectl get sc
+
+NAME                 PROVISIONER             RECLAIMPOLICY   VOLUMEBINDINGMODE      ALLOWVOLUMEEXPANSION   AGE
+csi-hostpath-sc      hostpath.csi.k8s.io     Delete          Immediate              true                   89s
+standard (default)   rancher.io/local-path   Delete          WaitForFirstConsumer   false                  23m
+
+kubectl get pvc
+
+NAME          STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS      AGE
+storage-pvc   Bound    pvc-f8276ace-6060-43a8-a0d7-317e6eafbdfc   1Gi        RWO            csi-hostpath-sc   2m1s
+kubectl get pv
+NAME                                       CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS   CLAIM                 STORAGECLASS      REASON   AGE
+pvc-f8276ace-6060-43a8-a0d7-317e6eafbdfc   1Gi        RWO            Delete           Bound    default/storage-pvc   csi-hostpath-sc            2m17s
+
+kubectl get volumeattachment
+
+NAME                                                                   ATTACHER              PV                                         NODE           ATTACHED   AGE
+csi-54aa4d690d146fc9f2e2d38a887d01a67fe56bf2cd7015a25d758b29d20ccf79   hostpath.csi.k8s.io   pvc-f8276ace-6060-43a8-a0d7-317e6eafbdfc   kind-worker3   true       2m34s
+```
+
+```
+kubectl describe pods/storage-pod
+Name:         storage-pod
+Namespace:    default
+Priority:     0
+Node:         kind-worker3/172.18.0.3
+Start Time:   Sun, 16 Aug 2020 13:57:03 +0300
+Labels:       <none>
+Annotations:  kubectl.kubernetes.io/last-applied-configuration:
+                {"apiVersion":"v1","kind":"Pod","metadata":{"annotations":{},"name":"storage-pod","namespace":"default"},"spec":{"containers":[{"image":"n...
+Status:       Running
+IP:           10.244.5.8
+Containers:
+  nginx:
+    Container ID:   containerd://e3f02ae6ef90826be8d6e5fc7903aaaf7c8d7af19b86b663f6abba6126e95de8
+    Image:          nginx
+    Image ID:       docker.io/library/nginx@sha256:b0ad43f7ee5edbc0effbc14645ae7055e21bc1973aee5150745632a24a752661
+    Port:           <none>
+    Host Port:      <none>
+    State:          Running
+      Started:      Sun, 16 Aug 2020 13:57:19 +0300
+    Ready:          True
+    Restart Count:  0
+    Environment:    <none>
+    Mounts:
+      /data from custom-csi-volume (rw)
+      /var/run/secrets/kubernetes.io/serviceaccount from default-token-xj5z8 (ro)
+Conditions:
+  Type              Status
+  Initialized       True
+  Ready             True
+  ContainersReady   True
+  PodScheduled      True
+Volumes:
+  custom-csi-volume:
+    Type:       PersistentVolumeClaim (a reference to a PersistentVolumeClaim in the same namespace)
+    ClaimName:  storage-pvc
+    ReadOnly:   false
+  default-token-xj5z8:
+    Type:        Secret (a volume populated by a Secret)
+    SecretName:  default-token-xj5z8
+    Optional:    false
+QoS Class:       BestEffort
+Node-Selectors:  <none>
+Tolerations:     node.kubernetes.io/not-ready:NoExecute for 300s
+                 node.kubernetes.io/unreachable:NoExecute for 300s
+Events:
+  Type     Reason                  Age        From                     Message
+  ----     ------                  ----       ----                     -------
+  Warning  FailedScheduling        <unknown>  default-scheduler        persistentvolumeclaim "storage-pvc" not found
+  Warning  FailedScheduling        <unknown>  default-scheduler        running "VolumeBinding" filter plugin for pod "storage-pod": pod has unbound immediate PersistentVolumeClaims
+  Warning  FailedScheduling        <unknown>  default-scheduler        running "VolumeBinding" filter plugin for pod "storage-pod": pod has unbound immediate PersistentVolumeClaims
+  Normal   Scheduled               <unknown>  default-scheduler        Successfully assigned default/storage-pod to kind-worker3
+  Normal   SuccessfulAttachVolume  20m        attachdetach-controller  AttachVolume.Attach succeeded for volume "pvc-f8276ace-6060-43a8-a0d7-317e6eafbdfc"
+  Normal   Pulling                 20m        kubelet, kind-worker3    Pulling image "nginx"
+  Normal   Pulled                  20m        kubelet, kind-worker3    Successfully pulled image "nginx"
+  Normal   Created                 20m        kubelet, kind-worker3    Created container nginx
+  Normal   Started                 20m        kubelet, kind-worker3    Started container nginx
+```
+
+6. Создаем тестовые данные:
+
+```
+kubectl exec -ti storage-pod bash
+root@storage-pod:/# cd data
+root@storage-pod:/data# echo 'Hello Otus!' > index.html
+root@storage-pod:/data# cat index.html
+Hello Otus!
+```
+7. Создаем shapshot:
+
+```
+kubectl apply -f hw/snapshot.yaml
+volumesnapshot.snapshot.storage.k8s.io/snapshot created
+```
+Проверяем:
+
+```
+kubectl get volumesnapshot
+NAME       AGE
+snapshot   20s
+```
+
+```
+kubectl describe volumesnapshot snapshot
+Name:         snapshot
+Namespace:    default
+Labels:       <none>
+Annotations:  kubectl.kubernetes.io/last-applied-configuration:
+                {"apiVersion":"snapshot.storage.k8s.io/v1beta1","kind":"VolumeSnapshot","metadata":{"annotations":{},"name":"snapshot","namespace":"defaul...
+API Version:  snapshot.storage.k8s.io/v1beta1
+Kind:         VolumeSnapshot
+Metadata:
+  Creation Timestamp:  2020-08-16T11:28:29Z
+  Finalizers:
+    snapshot.storage.kubernetes.io/volumesnapshot-as-source-protection
+    snapshot.storage.kubernetes.io/volumesnapshot-bound-protection
+  Generation:  1
+  Managed Fields:
+    API Version:  snapshot.storage.k8s.io/v1beta1
+    Fields Type:  FieldsV1
+    fieldsV1:
+      f:status:
+        f:creationTime:
+        f:readyToUse:
+        f:restoreSize:
+    Manager:         snapshot-controller
+    Operation:       Update
+    Time:            2020-08-16T11:28:41Z
+  Resource Version:  11693
+  Self Link:         /apis/snapshot.storage.k8s.io/v1beta1/namespaces/default/volumesnapshots/snapshot
+  UID:               4db5bfbf-191f-44b0-aed7-8127bb39cae1
+Spec:
+  Source:
+    Persistent Volume Claim Name:  storage-pvc
+  Volume Snapshot Class Name:      csi-hostpath-snapclass
+Status:
+  Bound Volume Snapshot Content Name:  snapcontent-4db5bfbf-191f-44b0-aed7-8127bb39cae1
+  Creation Time:                       2020-08-16T11:28:41Z
+  Ready To Use:                        true
+  Restore Size:                        1Gi
+Events:                                <none>
+```
+
+```
+kubectl get volumesnapshotcontents.snapshot.storage.k8s.io
+NAME                                               AGE
+snapcontent-4db5bfbf-191f-44b0-aed7-8127bb39cae1   4m9s
+```
+
+```
+k describe volumesnapshotcontents.snapshot.storage.k8s.io snapcontent-4db5bfbf-191f-44b0-aed7-8127bb39cae1
+Name:         snapcontent-4db5bfbf-191f-44b0-aed7-8127bb39cae1
+Namespace:
+Labels:       <none>
+Annotations:  <none>
+API Version:  snapshot.storage.k8s.io/v1beta1
+Kind:         VolumeSnapshotContent
+Metadata:
+  Creation Timestamp:  2020-08-16T11:28:29Z
+  Finalizers:
+    snapshot.storage.kubernetes.io/volumesnapshotcontent-bound-protection
+  Generation:  1
+  Managed Fields:
+    API Version:  snapshot.storage.k8s.io/v1beta1
+    Fields Type:  FieldsV1
+    fieldsV1:
+      f:metadata:
+        f:finalizers:
+          .:
+          v:"snapshot.storage.kubernetes.io/volumesnapshotcontent-bound-protection":
+    Manager:      snapshot-controller
+    Operation:    Update
+    Time:         2020-08-16T11:28:29Z
+    API Version:  snapshot.storage.k8s.io/v1beta1
+    Fields Type:  FieldsV1
+    fieldsV1:
+      f:status:
+        .:
+        f:creationTime:
+        f:readyToUse:
+        f:restoreSize:
+        f:snapshotHandle:
+    Manager:         csi-snapshotter
+    Operation:       Update
+    Time:            2020-08-16T11:28:41Z
+  Resource Version:  11692
+  Self Link:         /apis/snapshot.storage.k8s.io/v1beta1/volumesnapshotcontents/snapcontent-4db5bfbf-191f-44b0-aed7-8127bb39cae1
+  UID:               216d0047-d046-4bf5-b66a-ccce0a85e281
+Spec:
+  Deletion Policy:  Delete
+  Driver:           hostpath.csi.k8s.io
+  Source:
+    Volume Handle:             36b4835a-dfaf-11ea-8144-a697fca2c3c3
+  Volume Snapshot Class Name:  csi-hostpath-snapclass
+  Volume Snapshot Ref:
+    API Version:       snapshot.storage.k8s.io/v1beta1
+    Kind:              VolumeSnapshot
+    Name:              snapshot
+    Namespace:         default
+    Resource Version:  11644
+    UID:               4db5bfbf-191f-44b0-aed7-8127bb39cae1
+Status:
+  Creation Time:    1597577321708866976
+  Ready To Use:     true
+  Restore Size:     1073741824
+  Snapshot Handle:  a31f2481-dfb3-11ea-8144-a697fca2c3c3
+Events:             <none>
+```
+
+Проверяем snapshot непосредственно на ноде:
+
+```
+docker exec -ti kind-worker3 bash
+root@kind-worker3:/# cd /var/lib/csi-hostpath-data/
+root@kind-worker3:/var/lib/csi-hostpath-data# ls -lah
+total 16K
+drwxr-xr-x  3 root root 4.0K Aug 16 11:28 .
+drwxr-xr-x 13 root root 4.0K Aug 16 10:47 ..
+drwxr-xr-x  2 root root 4.0K Aug 16 11:23 36b4835a-dfaf-11ea-8144-a697fca2c3c3
+-rw-r--r--  1 root root  146 Aug 16 11:28 a31f2481-dfb3-11ea-8144-a697fca2c3c3.snap
+```
+
+8. Удаляем pod,pvc,pv:
+
+```
+kubectl delete pod storage-pod
+pod "storage-pod" deleted
+
+kubectl delete pvc storage-pvc
+persistentvolumeclaim "storage-pvc" deleted
+
+kubectl get pv
+No resources found.
+
+kubectl get pvc
+No resources found.
+```
+
+9. Выполняем восстановление:
+
+```
+kubectl apply -f hw/restore.yaml
+persistentvolumeclaim/storage-pvc created
+```
+
+```
+kubectl get pvc
+NAME          STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS      AGE
+storage-pvc   Bound    pvc-e7b36e89-0c09-40d9-8ba5-1c2fe66f8aec   1Gi        RWO            csi-hostpath-sc   39s
+```
+
+```
+kubectl get pv
+NAME                                       CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS   CLAIM                 STORAGECLASS      REASON   AGE
+pvc-e7b36e89-0c09-40d9-8ba5-1c2fe66f8aec   1Gi        RWO            Delete           Bound    default/storage-pvc   csi-hostpath-sc            2m1s
+```
+Проверяем наличие восстановленных данных:
+
+```
+kubectl apply -f hw/pod.yaml
+pod/storage-pod created
+```
+
+```
+kubectl exec storage-pod -- ls -l /data
+total 4
+-rw-r--r-- 1 root root 12 Aug 16 11:23 index.html
+```
+
+
+### Задание со 🌟. Развернуть k8s-кластер,к которому добавить хранилище на iSCSI
+
+Задание выполнялось на заранее развернутом кластере на голом железе, с помощью kubespray. В качестве хранилища была поднята ВМ на OS Centos 7 в той же подсети.
+
+1. На хосте ISCSI отключаем SELinux
+2. Также отключаем firewall:
+
+```
+systemctl disable firewalld
+systemctl stop firewalld
+```
+3. Устанавливаем taregtd и targetcli:
+
+```
+yum install targetd targetcli -y
+```
+4. Создаем volume group для targetd:
+
+```
+pvcreate /dev/sdb
+vgcreate vg-targetd /dev/sdb
+```
+5. Разрешаем доступ RPC для targetd, редактированием файла `/etc/target/targetd.yaml`
+
+```
+# See http://www.yaml.org/spec/1.2/spec.html for more on YAML.
+#
+# A sample /etc/target/targetd.yaml file.
+#
+
+# No default password, please pick a good one.
+
+password: 123qweASD
+
+# defaults below; uncomment and edit
+#block_pools: [vg-targetd/thin_pool] # just 1 by default, but can be more
+#fs_pools: []  # Path to btrfs FS, eg. /my_btrfs_mount
+target_name: iqn.2020-09.org.linux-iscsi.kuber:targetd
+pool_name: vg-targetd
+user: admin
+
+# log level (debug, info, warning, error, critical)
+#log_level: info
+
+ssl: false
+# if ssl is activated:
+#ssl_cert: /etc/target/targetd_cert.pem
+#ssl_key: /etc/target/targetd_key.pem
+```
+
+6. Запускаем и активируем targetd:
+
+```
+systemctl enable --now targetd
+```
+Проверяем:
+
+```
+[root@iscs ~]# systemctl status targetd
+● targetd.service - targetd storage array API daemon
+   Loaded: loaded (/usr/lib/systemd/system/targetd.service; enabled; vendor preset: disabled)
+   Active: active (running) since Вс 2020-09-06 07:04:19 EDT; 3h 14min ago
+ Main PID: 1646 (targetd)
+   CGroup: /system.slice/targetd.service
+           └─1646 targetd
+
+сен 06 07:04:19 iscs.lanit systemd[1]: Started targetd storage array API daemon.
+сен 06 07:04:20 iscs.lanit targetd[1646]: INFO:root:started server (TLS no)
+```
+
+7. На каждой рабочей ноде кластера устанавливаем iscsi-initiator-utils:
+
+`yum install -y iscsi-initiator-utils`
+
+8. Меняем имя инициаора в файле `/etc/iscsi/initiatorname.iscsi`
+
+`InitiatorName=iqn.1994-05.com.redhat:node1`
+
+9. Перезапускаем сервис:
+
+`systemctl restart iscsid`
+
+10. Создаем secret:
+
+`kubectl create secret generic targetd-account --from-literal=username=admin --from-literal=password=superpassword`
+
+11. Скачиваем манифест и правим в нем версию API и целевой аддресс:
+
+`wget https://raw.githubusercontent.com/ansilh/kubernetes-the-hardway-virtualbox/master/config/iscsi-provisioner-d.yaml`
+
+```yaml
+kind: Deployment
+apiVersion: apps/v1
+```
+
+```yaml
+- name: TARGETD_ADDRESS
+```
+Также добавляем права RBAC на создание endpoint:
+
+```yaml
+- apiGroups: [""]
+    resources: ["endpoints"]
+    verbs: ["get", "list", "watch", "create", "delete", "update"]
+```
+
+10. Применяем манифест:
+
+`kubectl apply -f iscsi-provisioner-d.yaml`
+
+11. Скачиваем манифесты PersistentVolumeClaim и StorageClass. Меняем в них значения на свои:
+
+```
+wget https://raw.githubusercontent.com/ansilh/kubernetes-the-hardway-virtualbox/master/config/iscsi-provisioner-class.yaml
+
+wget https://raw.githubusercontent.com/ansilh/kubernetes-the-hardway-virtualbox/master/config/iscsi-provisioner-pvc.yaml
+```
+
+`iscsi-provisioner-class.yaml`
+
+```yaml
+parameters:
+  # this id where the iscsi server is running
+  targetPortal: 172.30.24.176:3260
+
+  # this is the iscsi server iqn
+  iqn: iqn.2020-09.org.linux-iscsi.kuber:targetd
+
+  # this is the iscsi interface to be used, the default is default
+  # iscsiInterface: default
+
+  # this must be on eof the volume groups condifgured in targed.yaml, the default is vg-targetd
+  # volumeGroup: vg-targetd
+
+  # this is a comma separated list of initiators that will be give access to the created volumes, they must correspond to what you have configured in your nodes.
+  initiators: iqn.1994-05.com.redhat:node1,iqn.1994-05.com.redhat:node2,iqn.1994-05.com.redhat:node3
+```
+12. Применяем манифесты:
+
+```
+kubectl apply -f iscsi-provisioner-class.yaml
+kubectl apply -f iscsi-provisioner-pvc.yaml
+```
+13. Проверяем созданный pvc и pv:
+
+```
+kubectl get pvc
+NAME      STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS               AGE
+myclaim   Bound    pvc-1a439b94-8d4c-4374-a035-d02736cf7128   100Mi      RWO            iscsi-targetd-vg-targetd   135m
+```
+
+```
+kubectl get pv
+NAME                                       CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS   CLAIM                   STORAGECLASS               REASON   AGE
+postgres-pv-volume                         5Gi        RWX            Retain           Bound    ncc/postgres-pv-claim   manual                              44d
+pvc-1a439b94-8d4c-4374-a035-d02736cf7128   100Mi      RWO            Delete           Bound    default/myclaim         iscsi-targetd-vg-targetd            72s
+```
+
+14. На хосте с scsi проверяем:
+
+```
+targetcli ls
+o- / ......................................................................................................................... [...]
+  o- backstores .............................................................................................................. [...]
+  | o- block .................................................................................................. [Storage Objects: 1]
+  | | o- vg-targetd:pvc-1a439b94-8d4c-4374-a035-d02736cf7128  [/dev/vg-targetd/pvc-1a439b94-8d4c-4374-a035-d02736cf7128 (100.0MiB) write-thru activated]
+  | |   o- alua ................................................................................................... [ALUA Groups: 1]
+  | |     o- default_tg_pt_gp ....................................................................... [ALUA state: Active/optimized]
+  | o- fileio ................................................................................................. [Storage Objects: 0]
+  | o- pscsi .................................................................................................. [Storage Objects: 0]
+  | o- ramdisk ................................................................................................ [Storage Objects: 0]
+  o- iscsi ............................................................................................................ [Targets: 1]
+  | o- iqn.2020-09.org.linux-iscsi.kuber:targetd ......................................................................... [TPGs: 1]
+  |   o- tpg1 ............................................................................................... [no-gen-acls, no-auth]
+  |     o- acls .......................................................................................................... [ACLs: 3]
+  |     | o- iqn.1994-05.com.redhat:node1 ......................................................................... [Mapped LUNs: 1]
+  |     | | o- mapped_lun0 ................................... [lun0 block/vg-targetd:pvc-1a439b94-8d4c-4374-a035-d02736cf7128 (rw)]
+  |     | o- iqn.1994-05.com.redhat:node2 ......................................................................... [Mapped LUNs: 1]
+  |     | | o- mapped_lun0 ................................... [lun0 block/vg-targetd:pvc-1a439b94-8d4c-4374-a035-d02736cf7128 (rw)]
+  |     | o- iqn.1994-05.com.redhat:node3 ......................................................................... [Mapped LUNs: 1]
+  |     |   o- mapped_lun0 ................................... [lun0 block/vg-targetd:pvc-1a439b94-8d4c-4374-a035-d02736cf7128 (rw)]
+  |     o- luns .......................................................................................................... [LUNs: 1]
+  |     | o- lun0  [block/vg-targetd:pvc-1a439b94-8d4c-4374-a035-d02736cf7128 (/dev/vg-targetd/pvc-1a439b94-8d4c-4374-a035-d02736cf7128) (default_tg_pt_gp)]
+  |     o- portals .................................................................................................... [Portals: 1]
+  |       o- 0.0.0.0:3260 ..................................................................................................... [OK]
+  o- loopback ......................................................................................................... [Targets: 0]
+```
+
+```
+[root@iscs ~]# lvs
+  LV                                       VG         Attr       LSize   Pool Origin Data%  Meta%  Move Log Cpy%Sync Convert
+  home                                     centos     -wi-ao---- <25,12g
+  root                                     centos     -wi-ao----  50,00g
+  swap                                     centos     -wi-ao----  <3,88g
+  pvc-1a439b94-8d4c-4374-a035-d02736cf7128 vg-targetd -wi-ao---- 100,00m
+```
