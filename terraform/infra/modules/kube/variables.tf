@@ -2,14 +2,14 @@ variable project {
   description = "Project ID"
 }
 
-variable name {
-  type        = string
-  description = "Env Name"
-}
+# variable name {
+#   type        = string
+#   description = "Env Name"
+# }
 
 
 variable region {
-  default     = "europe-west1"
+  default     = "us-central1"
   description = "Region"
 }
 
@@ -18,7 +18,7 @@ variable public_key_path {
 }
 
 variable app_disk_image {
-  default     = "csi-host"
+  default     = "ubuntu-1804-lts"
   description = "Disk Image"
 }
 
@@ -28,7 +28,7 @@ variable private_key {
 
 variable zone {
   description = "Zone"
-  default     = "europe-west1-b"
+  default     = "us-central1-b"
 }
 
 variable users {
@@ -40,5 +40,11 @@ variable users {
 variable instances_count {
   type        = number
   default     = 3
+  description = "Count"
+}
+
+variable master_count {
+  type        = number
+  default     = 1
   description = "Count"
 }
