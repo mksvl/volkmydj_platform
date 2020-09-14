@@ -5298,3 +5298,356 @@ o- / ...........................................................................
   swap                                     centos     -wi-ao----  <3,88g
   pvc-1a439b94-8d4c-4374-a035-d02736cf7128 vg-targetd -wi-ao---- 100,00m
 ```
+
+## kubernetes-debug
+
+1. Разворачиваем GKE кластер:
+
+`terraform init && terraform apply`
+
+```
+Apply complete! Resources: 3 added, 0 changed, 0 destroyed.
+
+Outputs:
+
+dev_output = {
+  "cluster_endpoint" = "34.76.232.151"
+  "external_ip_address" = "35.240.2.228"
+}
+```
+
+2. Устанвливаем в кластер kubectl debug
+
+``
+
+3. Применяем манифест debug-агента:
+
+```
+kubectl apply -f strace/agent_daemonset.yml
+daemonset.apps/debug-agent created
+```
+
+4. Запустим под с приложением:
+
+```
+kubectl apply -f strace/nginx.yaml
+pod/nginx created
+```
+
+5. Запустим debug:
+
+```
+kubectl-debug nginx --agentless=false --port-forward=true
+Forwarding from 127.0.0.1:10027 -> 10027
+Forwarding from [::1]:10027 -> 10027
+Handling connection for 10027
+                             pulling image docker.io/nicolaka/netshoot:latest...
+latest: Pulling from nicolaka/netshoot
+cbdbe7a5bc2a: Pull complete
+fa7edde5704a: Pull complete
+d142e371ed28: Pull complete
+7bc9cb006bce: Pull complete
+a4d2c327d444: Pull complete
+428e55c983a8: Pull complete
+1209022df24d: Pull complete
+b74093e72c31: Pull complete
+Digest: sha256:04786602e5a9463f40da65aea06fe5a825425c7df53b307daa21f828cfe40bf8
+Status: Downloaded newer image for nicolaka/netshoot:latest
+starting debug container...
+container created, open tty...
+bash-5.0#
+```
+
+```
+ash-5.0# strace -p 1
+strace: attach: ptrace(PTRACE_SEIZE, 1): Operation not permitted
+```
+
+Видим, что не хватает привелегий. Меняем tag имиджа на latest.
+
+```yaml
+containers:
+  - image: aylei/debug-agent:latest
+```
+```
+kubectl apply -f strace/agent_daemonset.yml
+daemonset.apps/debug-agent configured
+```
+```
+kubectl-debug nginx --agentless=false --port-forward=true
+Forwarding from [::1]:10027 -> 10027
+Forwarding from 127.0.0.1:10027 -> 10027
+Handling connection for 10027
+                             pulling image docker.io/nicolaka/netshoot:latest...
+latest: Pulling from nicolaka/netshoot
+cbdbe7a5bc2a: Pull complete
+fa7edde5704a: Pull complete
+d142e371ed28: Pull complete
+7bc9cb006bce: Pull complete
+a4d2c327d444: Pull complete
+428e55c983a8: Pull complete
+1209022df24d: Pull complete
+b74093e72c31: Pull complete
+Digest: sha256:04786602e5a9463f40da65aea06fe5a825425c7df53b307daa21f828cfe40bf8
+Status: Downloaded newer image for nicolaka/netshoot:latest
+starting debug container...
+container created, open tty...
+bash-5.0#
+```
+
+Проверяем:
+
+```
+bash-5.0# strace -p 1
+strace: Process 1 attached
+rt_sigsuspend([], 8
+```
+
+### iptables-tailer
+
+Один из полезных инструментов, который был упомянут, но не показан на лекции - это `kube-iptables-tailer`. Он предназначен для того, чтобы выводить информацию об отброшенных iptables пакетах в журнал событий Kubernetes ( kubectl get events )
+Основной кейс - сообщить разработчикам сервисов о проблемах с NetworkPolicy.
+
+1. Установим netperf-operator
+
+ - Это Kubernetes-оператор, который позволяет запускать тесты пропускной способности сети между нодами кластера
+ - Сам проект - не очень production-grade, но иногда выручает
+
+```
+kubectl apply -f https://raw.githubusercontent.com/piontec/netperf-operator/master/deploy/crd.yaml
+customresourcedefinition.apiextensions.k8s.io/netperfs.app.example.com created
+kubectl apply -f https://raw.githubusercontent.com/piontec/netperf-operator/master/deploy/rbac.yaml
+role.rbac.authorization.k8s.io/netperf-operator created
+rolebinding.rbac.authorization.k8s.io/default-account-netperf-operator created
+deployment.apps/netperf-operator created
+kubectl apply -f https://raw.githubusercontent.com/piontec/netperf-operator/master/deploy/cr.yaml
+netperf.app.example.com/example created
+```
+Проверяем:
+
+```
+kubectl describe netperf.app.example.com/example
+Name:         example
+Namespace:    default
+Labels:       <none>
+Annotations:  kubectl.kubernetes.io/last-applied-configuration:
+                {"apiVersion":"app.example.com/v1alpha1","kind":"Netperf","metadata":{"annotations":{},"name":"example","namespace":"default"}}
+API Version:  app.example.com/v1alpha1
+Kind:         Netperf
+Metadata:
+  Creation Timestamp:  2020-09-13T14:17:45Z
+  Generation:          4
+  Resource Version:    13469
+  Self Link:           /apis/app.example.com/v1alpha1/namespaces/default/netperfs/example
+  UID:                 729c57b8-5f7c-41ad-8611-5ee88cc54c32
+Spec:
+  Client Node:
+  Server Node:
+Status:
+  Client Pod:          netperf-client-5ee88cc54c32
+  Server Pod:          netperf-server-5ee88cc54c32
+  Speed Bits Per Sec:  8942.17
+  Status:              Done
+Events:                <none>
+```
+Видим статус `Done` и скорость `Speed Bits Per Sec:  8942.17`
+
+2. Добавляем сетевую политику для Calico, чтобы ограничить доступ к подам Netperf и включить логирование в iptables:
+
+```
+kubectl apply -f kit/netperf-calico-policy.yaml
+networkpolicy.crd.projectcalico.org/netperf-calico-policy created
+```
+
+Перезапускаем тест:
+
+```
+kubectl delete -f kit/deploy/cr.yaml
+netperf.app.example.com "example" deleted
+
+kubectl apply -f kit/deploy/cr.yaml
+netperf.app.example.com/example created
+```
+
+Проверяем:
+
+```
+kubectl describe netperf.app.example.com/example
+Name:         example
+Namespace:    default
+Labels:       <none>
+Annotations:  kubectl.kubernetes.io/last-applied-configuration:
+                {"apiVersion":"app.example.com/v1alpha1","kind":"Netperf","metadata":{"annotations":{},"name":"example","namespace":"default"}}
+API Version:  app.example.com/v1alpha1
+Kind:         Netperf
+Metadata:
+  Creation Timestamp:  2020-09-13T14:28:49Z
+  Generation:          3
+  Resource Version:    16596
+  Self Link:           /apis/app.example.com/v1alpha1/namespaces/default/netperfs/example
+  UID:                 d9113fb5-450a-41a7-9b2c-7359138d99eb
+Spec:
+  Client Node:
+  Server Node:
+Status:
+  Client Pod:          netperf-client-7359138d99eb
+  Server Pod:          netperf-server-7359138d99eb
+  Speed Bits Per Sec:  0
+  Status:              Started test
+Events:                <none>
+```
+Видим, что тест висит в статусе Started test. Вероятно в сетевой политике есть ошибка.
+
+3. Подключимся к ноде, чтобы посмотреть в чем дело:
+
+`gcloud compute ssh gke-dev-dev-dc63acf8-t53h`
+
+```
+sudo journalctl -k | grep calico
+Sep 13 14:28:52 gke-dev-dev-dc63acf8-t53h kernel: calico-packet: IN=califa8af9931bb OUT=cali99a7f9ac281 MAC=ee:ee:ee:ee:ee:ee:26:0d:35:67:3b:75:08:00 SRC=10.0.4.13 DST=10.0.4.12 LEN=60 TOS=0x00 PREC=0x00 TTL=63 ID=56977 DF PROTO=TCP SPT=58445 DPT=12865 WINDOW=42600 RES=0x00 SYN URGP=0
+Sep 13 14:28:53 gke-dev-dev-dc63acf8-t53h kernel: calico-packet: IN=califa8af9931bb OUT=cali99a7f9ac281 MAC=ee:ee:ee:ee:ee:ee:26:0d:35:67:3b:75:08:00 SRC=10.0.4.13 DST=10.0.4.12 LEN=60 TOS=0x00 PREC=0x00 TTL=63 ID=56978 DF PROTO=TCP SPT=58445 DPT=12865 WINDOW=42600 RES=0x00 SYN URGP=0
+Sep 13 14:28:55 gke-dev-dev-dc63acf8-t53h kernel: calico-packet: IN=califa8af9931bb OUT=cali99a7f9ac281 MAC=ee:ee:ee:ee:ee:ee:26:0d:35:67:3b:75:08:00 SRC=10.0.4.13 DST=10.0.4.12 LEN=60 TOS=0x00 PREC=0x00 TTL=63 ID=56979 DF PROTO=TCP SPT=58445 DPT=12865 WINDOW=42600 RES=0x00 SYN URGP=0
+Sep 13 14:28:59 gke-dev-dev-dc63acf8-t53h kernel: calico-packet: IN=califa8af9931bb OUT=cali99a7f9ac281 MAC=ee:ee:ee:ee:ee:ee:26:0d:35:67:3b:75:08:00 SRC=10.0.4.13 DST=10.0.4.12 LEN=60 TOS=0x00 PREC=0x00 TTL=63 ID=56980 DF PROTO=TCP SPT=58445 DPT=12865 WINDOW=42600 RES=0x00 SYN URGP=0
+Sep 13 14:29:07 gke-dev-dev-dc63acf8-t53h kernel: calico-packet: IN=califa8af9931bb OUT=cali99a7f9ac281 MAC=ee:ee:ee:ee:ee:ee:26:0d:35:67:3b:75:08:00 SRC=10.0.4.13 DST=10.0.4.12 LEN=60 TOS=0x00 PREC=0x00 TTL=63 ID=56981 DF PROTO=TCP SPT=58445 DPT=12865 WINDOW=42600 RES=0x00 SYN URGP=0
+Sep 13 14:29:24 gke-dev-dev-dc63acf8-t53h kernel: calico-packet: IN=califa8af9931bb OUT=cali99a7f9ac281 MAC=ee:ee:ee:ee:ee:ee:26:0d:35:67:3b:75:08:00 SRC=10.0.4.13 DST=10.0.4.12 LEN=60 TOS=0x00 PREC=0x00 TTL=63 ID=62700 DF PROTO=TCP SPT=47587 DPT=12865 WINDOW=42600 RES=0x00 SYN URGP=0
+```
+
+Не очень удобно.
+
+4. Установим iptables-tailer
+
+Предваритеьно исправим его манифест:
+
+```yaml
+env:
+  - name: "JOURNAL_DIRECTORY"
+    value: "/var/log/journal"
+  - name: "IPTABLES_LOG_PREFIX"
+    value: "calico-packet:"
+```
+
+```
+kubectl apply -f kit/deploy/kit-serviceaccount.yaml
+serviceaccount/kube-iptables-tailer created
+kubectl apply -f kit/deploy/kit-clusterrole.yaml
+clusterrole.rbac.authorization.k8s.io/kube-iptables-tailer created
+kubectl apply -f kit/deploy/kit-clusterrolebinding.yaml
+clusterrolebinding.rbac.authorization.k8s.io/kube-iptables-tailer created
+kubectl apply -f kit/deploy/iptables-tailer.yaml
+daemonset.extensions/kube-iptables-tailer created
+```
+
+Снова перезапустим тест:
+
+```
+kubectl delete -f kit/deploy/cr.yaml
+netperf.app.example.com "example" deleted
+```
+```
+kubectl apply -f kit/deploy/cr.yaml
+netperf.app.example.com/example created
+```
+
+Проверяем:
+
+```
+kubectl describe po netperf-server-b2306feabaed
+Name:           netperf-server-b2306feabaed
+Namespace:      default
+Priority:       0
+Node:           gke-dev-dev-775f4ceb-4rsd/10.132.0.56
+Start Time:     Sun, 13 Sep 2020 17:47:10 +0300
+Labels:         app=netperf-operator
+                netperf-type=server
+Annotations:    cni.projectcalico.org/podIP: 10.0.5.3/32
+                kubernetes.io/limit-ranger: LimitRanger plugin set: cpu request for container netperf-server-b2306feabaed
+Status:         Running
+IP:             10.0.5.3
+Controlled By:  Netperf/example
+Containers:
+  netperf-server-b2306feabaed:
+    Container ID:   docker://5460dd42c64460bf57088b48961273a9b1fdd52476198b95eb595a2fc5b9bcd9
+    Image:          tailoredcloud/netperf:v2.7
+    Image ID:       docker-pullable://tailoredcloud/netperf@sha256:0361f1254cfea87ff17fc1bd8eda95f939f99429856f766db3340c8cdfed1cf1
+    Port:           <none>
+    Host Port:      <none>
+    State:          Running
+      Started:      Sun, 13 Sep 2020 17:47:13 +0300
+    Ready:          True
+    Restart Count:  0
+    Requests:
+      cpu:        100m
+    Environment:  <none>
+    Mounts:
+      /var/run/secrets/kubernetes.io/serviceaccount from default-token-vgpxn (ro)
+Conditions:
+  Type              Status
+  Initialized       True
+  Ready             True
+  ContainersReady   True
+  PodScheduled      True
+Volumes:
+  default-token-vgpxn:
+    Type:        Secret (a volume populated by a Secret)
+    SecretName:  default-token-vgpxn
+    Optional:    false
+QoS Class:       Burstable
+Node-Selectors:  <none>
+Tolerations:     node.kubernetes.io/not-ready:NoExecute for 300s
+                 node.kubernetes.io/unreachable:NoExecute for 300s
+Events:
+  Type     Reason      Age    From                                Message
+  ----     ------      ----   ----                                -------
+  Normal   Scheduled   5m38s  default-scheduler                   Successfully assigned default/netperf-server-b2306feabaed to gke-dev-dev-775f4ceb-4rsd
+  Normal   Pulling     5m37s  kubelet, gke-dev-dev-775f4ceb-4rsd  Pulling image "tailoredcloud/netperf:v2.7"
+  Normal   Pulled      5m35s  kubelet, gke-dev-dev-775f4ceb-4rsd  Successfully pulled image "tailoredcloud/netperf:v2.7"
+  Normal   Created     5m35s  kubelet, gke-dev-dev-775f4ceb-4rsd  Created container netperf-server-b2306feabaed
+  Normal   Started     5m35s  kubelet, gke-dev-dev-775f4ceb-4rsd  Started container netperf-server-b2306feabaed
+  Warning  PacketDrop  5m33s  kube-iptables-tailer                Packet dropped when receiving traffic from 10.0.4.15
+  Warning  PacketDrop  3m19s  kube-iptables-tailer                Packet dropped when receiving traffic from client (10.0.4.15)
+```
+
+Обратим внимание на Events, паеты дропаются.
+
+
+### Задание со ⭐
+
+- Исправим ошибку в сетевой политике, чтобы Netperf снова начал работать
+
+```yaml
+ingress:
+  - action: Allow
+    source:
+      selector: app == "netperf-operator"
+  - action: Log
+  - action: Deny
+egress:
+  - action: Allow
+    destination:
+      selector: app == "netperf-operator"
+  - action: Log
+  - action: Deny
+```
+Также необходимо попраить iptables-tailer.yaml:
+
+```yaml
+env:
+  - name: "POD_IDENTIFIER"
+    value: "name"
+# - name: "POD_IDENTIFIER_LABEL"
+#   value: "netperf-type"
+```
+
+Результат:
+
+````
+Events:
+  Type     Reason      Age    From                                Message
+  ----     ------      ----   ----                                -------
+  Normal   Scheduled   3m22s  default-scheduler                   Successfully assigned default/netperf-server-1419bead3dad to gke-dev-dev-775f4ceb-4rsd
+  Normal   Pulled      3m21s  kubelet, gke-dev-dev-775f4ceb-4rsd  Container image "tailoredcloud/netperf:v2.7" already present on machine
+  Normal   Created     3m21s  kubelet, gke-dev-dev-775f4ceb-4rsd  Created container netperf-server-1419bead3dad
+  Normal   Started     3m21s  kubelet, gke-dev-dev-775f4ceb-4rsd  Started container netperf-server-1419bead3dad
+  Warning  PacketDrop  3m20s  kube-iptables-tailer                Packet dropped when receiving traffic from 10.0.4.16
+  Warning  PacketDrop  64s    kube-iptables-tailer                Packet dropped when receiving traffic from netperf-client-1419bead3dad (10.0.4.16)
+```

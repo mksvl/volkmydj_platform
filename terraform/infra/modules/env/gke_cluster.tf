@@ -1,6 +1,6 @@
 data google_container_engine_versions "engine_versions" {
   location       = var.region
-  version_prefix = "1.16."
+  version_prefix = "1.15."
 }
 
 
