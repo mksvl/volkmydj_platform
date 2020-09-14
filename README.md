@@ -1,4 +1,5 @@
 ### volkmydj_platform
+
 volkmydj Platform repository
 
 # kubernetes-intro. HW-1
@@ -18,35 +19,38 @@ volkmydj Platform repository
      - role: worker
      - role: worker
      - role: worker
-  ```
-   4.2. Поднимаем кластер следущей командой:
    ```
-  kind create cluster --config ~/kind-config.yaml
-   ```
+
+```
+ 4.2. Поднимаем кластер следущей командой:
+```
+
+kind create cluster --config ~/kind-config.yaml
+
+````
 5. Установлена утилита визуализации консольной работы с кластером k9s. Рассмотрены команды управления.
 6. Получены результаты при убитии всех pods в namespace kube-system.
-  6.1. Системные поды мониторятся агентом kubelet.
-  6.2. Если в манифестах поды описаны как объекты типа Deployments, то данные поды автоматически восстанавливаться до необходимого кол-ва.
+6.1. Системные поды мониторятся агентом kubelet.
+6.2. Если в манифестах поды описаны как объекты типа Deployments, то данные поды автоматически восстанавливаться до необходимого кол-ва.
 7. Создан Dockerfile с описанием образа вэб-сервера.
 8. Создана простейшая html страница, которая размещается в папке /app.
 9. Поднят контейнер с вэб-сервером и проверена его работа. Образ запушен в личный docker registry.
 10. Создан манифест для поднятия пода вэб-сервера в кластер.
 11. Добавлен init container в манфест пода.
 12. Создан образ фронтенда приложения hipster-shop.
-    В процесе поднятия пода приложения обнаружилась ошибка. Команда kubectl logs frontend показала следующее:
+ В процесе поднятия пода приложения обнаружилась ошибка. Команда kubectl logs frontend показала следующее:
 ```go
-    panic: environment variable "PRODUCT_CATALOG_SERVICE_ADDR" not set \
+ panic: environment variable "PRODUCT_CATALOG_SERVICE_ADDR" not set \
 goroutine 1 [running]: \
 main.mustMapEnv(0xc00039c000, 0xb03c4a, 0x1c) \
-        /go/src/github.com/GoogleCloudPlatform/microservices-demo/src/frontend/main.go:248 +0x10e \
+     /go/src/github.com/GoogleCloudPlatform/microservices-demo/src/frontend/main.go:248 +0x10e \
 main.main() \
-        /go/src/github.com/GoogleCloudPlatform/microservices-demo/src/frontend/main.go:106 +0x3e9
-```
+     /go/src/github.com/GoogleCloudPlatform/microservices-demo/src/frontend/main.go:106 +0x3e9
+````
 
 Изучив файл main.go стало понятно, что не хватает переменной, а позднее выяснилось, что нехватает нескольких переменных.
 
 13. Создан манифест frontend-pod-healthy.yaml поднятия фронтенда с учетом недостающих параметров.
-
 
 # kubernetes-controllers.HW#2
 
@@ -54,15 +58,15 @@ main.main() \
 2. Создал манифест для запуска одной реплики приложения frontend. При запуске ожидаемо получил ошибку. Ошибка заключалась в том, что в коде манифеста не было важной части кода, а именно:
 
 ```yaml
-  selector:
-    matchLabels:
-      app: frontend
+selector:
+  matchLabels:
+    app: frontend
 ```
 
 4. Обновление ReplicaSet не повлекло за собой обновление pod. Этого не произошло по следующим причинам:
 
 - ReplicaSet не проверяет соответствие запущенных подов шаблону;
- - ReplicaSet не умеет рестартовать запущенные поды при обновлении шаблона
+- ReplicaSet не умеет рестартовать запущенные поды при обновлении шаблона
 
 5. Собрал образ для сервиса paymentservice и запушил две версии в docker hub.
 
@@ -81,9 +85,10 @@ main.main() \
 13. Манифест NodeExporter модернизировал так,чтобы Node Exporter разворачивался как на worker нодах, так и на master нодах. Это реализуется в следующей секции манифеста:
 
 ```yaml
-      tolerations:
-        - operator: "Exists"
-````
+tolerations:
+  - operator: "Exists"
+```
+
 Пустой `key` с оператором `Exists` соответствует всем ключам, значениям и эффектам, что означает, что это допустимо ко всему кластеру.
 
 # kubernetes-security.HW#3
@@ -111,14 +116,12 @@ main.main() \
 
 12. Сервисному аккаунту ken предоставлена роль view в рамках Namespace dev.
 
-
-
 # kubernetes-controllers.HW#4
 
 ### Основное ДЗ.
 
 1. Поднял minikube: \
-`minikube start`
+   `minikube start`
 
 2. Добавил `readinessProbe`
 
@@ -127,21 +130,23 @@ readinessProbe:
   httpGet:
     path: /index.html
     port: 80
-````
+```
 
 3. Задеплоил под из предыдущего задания:\
-`kubectl apply -f kubernetes-intro/web-pod.yaml`
-pod/web created
+   `kubectl apply -f kubernetes-intro/web-pod.yaml`
+   pod/web created
 
 4. Проверил, что под запустился:\
-`kubectl get pod/web`
+   `kubectl get pod/web`
+
 ```
 NAME   READY   STATUS    RESTARTS   AGE
 web    0/1     Running   0          7m43s
 ```
 
 5. Просмотрел более подробную информацию по поду:\
-`kubectl describe pod/web`
+   `kubectl describe pod/web`
+
 ```
 Conditions:
   Type              Status
@@ -149,10 +154,12 @@ Conditions:
   Ready             False
   ContainersReady   False
   PodScheduled      True
-````
-````
+```
+
+```
 Warning  Unhealthy  48s (x60 over 10m)  kubelet, minikube  Readiness probe failed: Get http://172.17.0.3:80/index.html: dial tcp 172.17.0.3:80: connect: connection refused
-````
+```
+
 По итогу под не запустился.
 
 6. Добавил проверку `livenessProbe`:
@@ -160,13 +167,13 @@ Warning  Unhealthy  48s (x60 over 10m)  kubelet, minikube  Readiness probe faile
 ```yaml
 livenessProbe:
   tcpSocket: { port: 8000 }
-````
+```
 
 7. Запустил под с новой конфигурацией:
-`kubectl apply -f kubernetes-intro/web-pod.yaml --force`
+   `kubectl apply -f kubernetes-intro/web-pod.yaml --force`
 
 Проверил:\
-`Liveness:       tcp-socket :8000 delay=0s timeout=1s period=10s #success=1 #failure=3`
+`Liveness: tcp-socket :8000 delay=0s timeout=1s period=10s #success=1 #failure=3`
 
 8. Cледующая конфигурация валидна, но не имеет смысла по следующей причине:
 
@@ -174,17 +181,19 @@ livenessProbe:
 livenessProbe:
   exec:
     command:
-      - 'sh'
-      - '-c'
-      - 'ps aux | grep my_web_server_process'
-````
+      - "sh"
+      - "-c"
+      - "ps aux | grep my_web_server_process"
+```
+
 Похожая конфигурация прописана ниже в init контейнере.
 Данная конфигурация имеет смысл, если мы не используем init контейнер.
 
 9. Создал деплоймент приложения web и применил его, предварительно удалив предыдущий под:\
-`kubectl apply -f web-deploy.yaml`
+   `kubectl apply -f web-deploy.yaml`
 
 Результат:
+
 ```
 Name:                   web
 Namespace:              default
@@ -238,8 +247,7 @@ Events:
   Type    Reason             Age   From                   Message
   ----    ------             ----  ----                   -------
   Normal  ScalingReplicaSet  49s   deployment-controller  Scaled up replica set web-7cd5754fd8 to 1
-````
-
+```
 
 10. Увеличил кол-во реплик до 3-х и применил деплоймент:
 
@@ -251,40 +259,43 @@ strategy:
     rollingUpdate:
       maxUnavailable: 0
       maxSurge: 100%
-````
+```
 
 11. Испробывал разные стратегии обновления:
- - maxSurge=0 и maxUnavailable=0:
- `The Deployment "web" is invalid: spec.strategy.rollingUpdate.maxUnavailable: Invalid value: intstr.IntOrString{Type:0, IntVal:0, StrVal:""}: may not be 0 when `maxSurge` is 0`
 
- - maxSurge=100% и maxUnavailable=100%:\
- `ROLLOUT STATUS:
-  - [Current rollout | Revision 2] [MODIFIED]  default/web-76c54c8f4f    ✅ ReplicaSet is available [3 Pods available of a 3 minimum]
-       - [Ready] web-76c54c8f4f-rknr2
-       - [Ready] web-76c54c8f4f-2xkj7
-       - [Ready] web-76c54c8f4f-m5cnh`
+- maxSurge=0 и maxUnavailable=0:
+  `The Deployment "web" is invalid: spec.strategy.rollingUpdate.maxUnavailable: Invalid value: intstr.IntOrString{Type:0, IntVal:0, StrVal:""}: may not be 0 when `maxSurge` is 0`
 
- - maxSurge=0 и maxUnavailable=100%:\
+- maxSurge=100% и maxUnavailable=100%:\
+  `ROLLOUT STATUS:
+- [Current rollout | Revision 2] [MODIFIED] default/web-76c54c8f4f ✅ ReplicaSet is available [3 Pods available of a 3 minimum]
 
- ```
+  - [Ready] web-76c54c8f4f-rknr2
+  - [Ready] web-76c54c8f4f-2xkj7
+  - [Ready] web-76c54c8f4f-m5cnh`
+
+- maxSurge=0 и maxUnavailable=100%:\
+
+```
 ROLLOUT STATUS:
 - [Current rollout | Revision 3] [MODIFIED]  default/web-7cd5754fd8    ⌛ Waiting for ReplicaSet to attain minimum available Pods (2 available of a 3 minimum)
 - [ContainersNotReady] web-7cd5754fd8-8r6w8 containers with unready status: [web]
 - [Ready] web-7cd5754fd8-pqfvd
 - [Ready] web-7cd5754fd8-d42dq- [Previous ReplicaSet | Revision 2] [MODIFIED]  default/web-76c54c8f4f
-    ⌛ Waiting for ReplicaSet to scale to 0 Pods (1 currently exist)
-       - [Ready] web-76c54c8f4f-2xkj7
-       - [Ready] web-76c54c8f4f-m5cnh
-       - [Ready] web-76c54c8f4f-rknr2
+   ⌛ Waiting for ReplicaSet to scale to 0 Pods (1 currently exist)
+      - [Ready] web-76c54c8f4f-2xkj7
+      - [Ready] web-76c54c8f4f-m5cnh
+      - [Ready] web-76c54c8f4f-rknr2
 ```
 
 11. Создал Service ClusterIP и применил его:
-`kubectl apply -f web-svc-cip.yaml`\
-`kubectl get services`
+    `kubectl apply -f web-svc-cip.yaml`\
+    `kubectl get services`
+
 ```
 NAME          TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)          AGE
 web-svc-cip   ClusterIP   10.111.64.39     <none>        80/TCP           20s
-````
+```
 
 12. Зашел на minikube для проверки сервиса `minikube ssh` и сделал проверку `curl http://10.111.64.39/index.html`. Работает, но в тоже время `ping 10.111.64.39` не работает.
 
@@ -294,32 +305,36 @@ web-svc-cip   ClusterIP   10.111.64.39     <none>        80/TCP           20s
 
 ```
 1    60 KUBE-SVC-WKCOG6KH24K26XRJ  tcp  --  *      *       0.0.0.0/0            10.111.64.39         /* default/web-svc-cip: cluster IP */ tcp dpt:80
-````
+```
 
-14. Включил IPVS  для `kube-proxy`:\
-`ipvsadm --list -n`
+14. Включил IPVS для `kube-proxy`:\
+    `ipvsadm --list -n`
 
 ```
 TCP  10.111.64.39:80 rr
 ```
+
 Пингуем его:\
 `ping -c1 10.111.64.39`
-````
+
+```
 PING 10.111.64.39 (10.111.64.39): 56 data bytes
 64 bytes from 10.111.64.39: seq=0 ttl=64 time=0.095 ms
 
 --- 10.111.64.39 ping statistics ---
 1 packets transmitted, 1 packets received, 0% packet loss
 round-trip min/avg/max = 0.095/0.095/0.095 ms
-`````
+```
+
 15. Установил манифест MetalLB:\
-`kubectl apply -f https://raw.githubusercontent.com/google/metallb/v0.8.0/manifests/metallb.yaml`
+    `kubectl apply -f https://raw.githubusercontent.com/google/metallb/v0.8.0/manifests/metallb.yaml`
 
 Примечание: С версией манифеста 0.8.0 возникли проблемы. Я использовал версию 0.8.1
 
 Проверяем:\
 `kubectl --namespace metallb-system get all`
-````
+
+```
 NAME                              READY   STATUS    RESTARTS   AGE
 pod/controller-5df86965f5-kx969   1/1     Running   0          112s
 pod/speaker-s6vsx                 1/1     Running   0          112s
@@ -334,18 +349,19 @@ deployment.apps/controller   1/1     1            1           112s
 
 NAME                                    DESIRED   CURRENT   READY   AGE
 replicaset.apps/controller-5df86965f5   1         1         1       112s
-`````
+```
 
 16. Создал манифест `metallb-config.yaml`. В нем определил следующие параметры:
 
- - Режим L2 (анонс адресов балансировщиков с помощью ARP)
- - Создаем пул адресов 172.17.255.1-172.17.255.255 - они будут назначаться сервисам с типом `LoadBalancer`
+- Режим L2 (анонс адресов балансировщиков с помощью ARP)
+- Создаем пул адресов 172.17.255.1-172.17.255.255 - они будут назначаться сервисам с типом `LoadBalancer`
 
 17. Создал манифест сервиса `web-svc-lb.yaml` и применил его:\
-`kubectl --namespace metallb-system logs pod/controller-5df86965f5-kx969`
-````
+    `kubectl --namespace metallb-system logs pod/controller-5df86965f5-kx969`
+
+```
 {"caller":"service.go:98","event":"ipAllocated","ip":"172.17.255.1","msg":"IP address assigned by controller","service":"default/web-svc-lb","ts":"2020-05-21T14:29:04.239966026Z"}
-`````
+```
 
 18. Добавил маршрут до сети в minikube:\
 
@@ -357,31 +373,31 @@ kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/mast
 
 19. Создал Ingress. Т.к. команда:\
 
- `kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/static/mandatory.yaml`
+`kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/master/deploy/static/mandatory.yaml`
 
- вернула в ответ 404, то Ingress для mikube был активирован командой: `minikube addons enable
-ingress`
+вернула в ответ 404, то Ingress для mikube был активирован командой: `minikube addons enable ingress`
 
 20. Создал манивест `nginx-lb.yaml`
-Проверяем командой: `http://<load-balancer-ip>/index.html`
+    Проверяем командой: `http://<load-balancer-ip>/index.html`
 
 21. Создал и применил манифест `web-svc-headless.yaml`.
-Проверяем, что полученный манифест на получил `ClusterIP`:
-`kubectl get service`
-````
+    Проверяем, что полученный манифест на получил `ClusterIP`:
+    `kubectl get service`
+
+```
 NAME          TYPE           CLUSTER-IP       EXTERNAL-IP    PORT(S)        AGE
 kubernetes    ClusterIP      10.96.0.1        <none>         443/TCP        96m
 web-svc       ClusterIP      None             <none>         80/TCP         80s
 web-svc-cip   ClusterIP      10.102.222.121   <none>         80/TCP         95m
 web-svc-lb    LoadBalancer   10.103.113.210   172.17.255.1   80:32762/TCP   64m
-`````
+```
 
 22. Настроил ingress-прокси, создав манифест с ресурсом `Ingress`. Манифест `web-ingress.yaml`.
-Проверяем, что все правильно:
+    Проверяем, что все правильно:
 
 `kubectl describe ingress/web`
 
-````
+```
 Name:             web
 Namespace:        default
 Address:          172.17.255.2
@@ -396,28 +412,29 @@ Annotations:
 
   nginx.ingress.kubernetes.io/rewrite-target:  /
 Events:                                        <none>
-````
+```
+
 Проверяем, что страница доступна в брауезере:
 
 `http://<LB_IP>/web/index.html`
 
-
-## ДЗ со *.
+## ДЗ со \*.
 
 1. Сделал сервис LoadBalancer , который открывает доступ к CoreDNS снаружи кластера.
-Манифест `metallb-config-coredns.yaml`.\
-Если есть необходимость группировать службы на одном IP-адресе, можно включить выборочное разделение IP-адресов, добавив к службам аннотацию metallb `universe.tf/allow-shared-ip.`\
-Подробнее описано в документации: https://metallb.universe.tf/usage/#ip-address-sharing
+   Манифест `metallb-config-coredns.yaml`.\
+   Если есть необходимость группировать службы на одном IP-адресе, можно включить выборочное разделение IP-адресов, добавив к службам аннотацию metallb `universe.tf/allow-shared-ip.`\
+   Подробнее описано в документации: https://metallb.universe.tf/usage/#ip-address-sharing
 
 Находим нужные поды службы:
 
 `kubectl get pods -n kube-system`
 
-````
+```
 NAME                               READY   STATUS    RESTARTS   AGE
 coredns-66bff467f8-h72g8           1/1     Running   0          27h
 coredns-66bff467f8-h7vmw           1/1     Running   0          27h
-````
+```
+
 Смотрим Labels:
 
 `kubectl describe pods coredns-66bff467f8-h72g8 -n kube-system`
@@ -430,34 +447,36 @@ Priority Class Name:  system-cluster-critical
 Node:                 minikube/192.168.64.3
 Start Time:           Thu, 21 May 2020 16:57:13 +0300
 Labels:               k8s-app=kube-dns
-````
+```
+
 k8s-app=kube-dns
 
 Создаем манифест сервиса по типу LoadBalancer. В качестве селектора задаем:
 
 ```yaml
 selector:
-    k8s-app: kube-dns
-````
+  k8s-app: kube-dns
+```
+
 Также в манифесте указываем порты TCP и UDP.\
 Применяем манифест и проверяем:
 
 `nslookup kubernetes.default.svc.cluster.local. 172.17.255.10`
 
-````
+```
 Server:         172.17.255.10
 Address:        172.17.255.10#53
 
 Name:   kubernetes.default.svc.cluster.local
 Address: 10.96.0.1
-````
+```
 
 2. Добавил доступ к kubernetes-dashboard через Ingress-прокси. Манифест `dashboard-ingress.yaml`.\
-***Скажу честно, у меня не заработал. Но судя по документации должен был...
+   \*\*\*Скажу честно, у меня не заработал. Но судя по документации должен был...
 
-`kubectl describe ingress kubernetes-dashboard  --namespace kube-system`
+`kubectl describe ingress kubernetes-dashboard --namespace kube-system`
 
-````
+```
 Name:             kubernetes-dashboard
 Namespace:        kube-system
 Address:          172.17.255.2
@@ -475,68 +494,70 @@ Events:
   Type    Reason  Age                  From                      Message
   ----    ------  ----                 ----                      -------
   Normal  UPDATE  12s (x2 over 7h56m)  nginx-ingress-controller  Ingress kube-system/kubernetes-dashboard
-  ````
+```
+
 По адрессу `http://172.17.255.2/dashboard/` получаю:
 
-````
+```
 503 Service Temporarily Unavailable
 
 nginx/1.17.8
-````
+```
 
 3. Реализованно канареечное развертывание с помощью
-ingress-nginx.
+   ingress-nginx.
 
- - Создаем production namespace для проекта:\
- `kubectl apply -f echo-production-ns.yaml`
+- Создаем production namespace для проекта:\
+  `kubectl apply -f echo-production-ns.yaml`
 
- - Разворачиваем приложение. Для этого используем пример из репозитория Kubernetes. Разворачиваем тестовый echo-сервер в созданном namespace:
+- Разворачиваем приложение. Для этого используем пример из репозитория Kubernetes. Разворачиваем тестовый echo-сервер в созданном namespace:
 
- `kubectl apply -f http-svc.yaml -n echo-production`
+`kubectl apply -f http-svc.yaml -n echo-production`
 
- - Создаем файл конфигурации Ingress и применяем его к namespace echo-production:
+- Создаем файл конфигурации Ingress и применяем его к namespace echo-production:
 
- `kubectl apply -f http-svc-ingress.yaml -n echo-production`
+`kubectl apply -f http-svc-ingress.yaml -n echo-production`
 
- В результате сервер будет реагировать на все запросы от хоста echo.com.
+В результате сервер будет реагировать на все запросы от хоста echo.com.
 
- - Создаем Canary-версию namespace приложения:
+- Создаем Canary-версию namespace приложения:
 
- `kubectl apply -f echo-canary-ns.yaml`
+`kubectl apply -f echo-canary-ns.yaml`
 
- - Разворачиваем Canary-версию приложения:
+- Разворачиваем Canary-версию приложения:
 
- `kubectl apply -f http-svc.yaml -n echo-canary`
+`kubectl apply -f http-svc.yaml -n echo-canary`
 
- - Создаем Canary-версию файла конфигурации Ingress и применяем его к namespace echo-canary:
+- Создаем Canary-версию файла конфигурации Ingress и применяем его к namespace echo-canary:
 
- `kubectl apply -f http-svc-ingress-canary.yaml -n echo-canary`
+`kubectl apply -f http-svc-ingress-canary.yaml -n echo-canary`
 
- Примечание:
+Примечание:
 
- ````
+```
 nginx.ingress.kubernetes.io/canary: "true" означает, что Kubernetes не будет рассматривать этот Ingress как самостоятельный и пометит его как Canary, связав с основным Ingress;
 
 nginx.ingress.kubernetes.io/canary-weight: "10" означает, что на Canary будет приходиться примерно 50% всех запросов
-````
+```
 
-- Проверку, что запросы распределяются в соответствии с  конфигурационным файлом реализована через скрипт на Ruby:
+- Проверку, что запросы распределяются в соответствии с конфигурационным файлом реализована через скрипт на Ruby:
 
-````ruby
+```ruby
 counts = Hash.new(0)
 1000.times do
   output = `curl -s -H "Host: echo.com" http://172.17.255.2 | grep 'pod namespace'`
   counts[output.strip.split.last] += 1
 end
 puts counts
-````
+```
+
 (Скрипт не мой, а честно найден на просторах интернета)
 
 В результате вывод будет примерно такой:
 
-````
+```
 {"echo-canary"=>509, "echo-prod"=>491}
-`````
+```
 
 # kubernetes-volumes.HW#5
 
@@ -547,17 +568,17 @@ puts counts
 2. Развернул StatefulSet c MinIO:
 
 `kubectl apply -f minio-statefulset.yaml`
-````
+
+```
 NAME      READY   STATUS    RESTARTS   AGE
 minio-0   1/1     Running   0          13m
-````
-
+```
 
 3. Для того, чтобы наш StatefulSet был доступен изнутри кластера, создал Headless Service и задеплоил:
 
 `kubectl apply -f minio-statefulset.yaml`
 
-## Задание со *.
+## Задание со \*.
 
 Данные в StatefulSet передаются в открытом виде. Нужно это исправить.
 
@@ -578,19 +599,19 @@ bWluaW8xMjM=
 3. Правим манифест StateFullSet:
 
 ```yaml
-    spec:
-      containers:
-        - name: minio
-          envFrom:
-            - secretRef:
-                name: minio-secret
-````
+spec:
+  containers:
+    - name: minio
+      envFrom:
+        - secretRef:
+            name: minio-secret
+```
 
 4. Применяем манифест и проверяем, что изменения применились:
 
 `kubectl describe pod minio-0`
 
-````
+```
 Name:           minio-0
 Namespace:      default
 Priority:       0
@@ -620,8 +641,7 @@ Containers:
     Liveness:       http-get http://:9000/minio/health/live delay=120s timeout=1s period=20s #success=1 #failure=3
     Environment Variables from:
       minio-secret  Secret  Optional: false
-````
-
+```
 
 ## kubernetes-templating
 
@@ -631,44 +651,44 @@ Containers:
 
 `terraform apply`
 
-````
+```
 Apply complete! Resources: 3 added, 0 changed, 0 destroyed.
-````
+```
 
 2. Настроил kubectl на локальной машине:
 
 `gcloud container clusters get-credentials my-gke-cluster --region europe-west4-a --project otus-kuber-278507`
 
-````
+```
 Fetching cluster endpoint and auth data.
 kubeconfig entry generated for my-gke-cluster.
-````
+```
 
- 3. Добавил репозиторий stable:
+3.  Добавил репозиторий stable:
 
 `helm repo add stable https://kubernetes-charts.storage.googleapis.com`
 
 `helm repo list`
 
-````
+```
 NAME            URL
 gitlab          https://charts.gitlab.io
 nginx-stable    https://helm.nginx.com/stable
 incubator       http://storage.googleapis.com/kubernetes-charts-incubator
 stable          https://kubernetes-charts.storage.googleapis.com
-````
+```
 
 4. Создал namespace и release nginx-ingress:
 
 `kubectl create ns nginx-ingress`
 
-````
+```
 helm upgrade --install nginx-ingress stable/nginx-ingress --wait \
 --namespace=nginx-ingress \
 --version=1.11.1
-````
+```
 
-````yaml
+```yaml
 NAME: nginx-ingress
 LAST DEPLOYED: Wed May 27 19:07:48 2020
 NAMESPACE: nginx-ingress
@@ -715,8 +735,7 @@ If TLS is enabled for the Ingress, a Secret containing the certificate and key m
     tls.crt: <base64 encoded cert>
     tls.key: <base64 encoded key>
   type: kubernetes.io/tls
-````
-
+```
 
 5. Добавил репозиторий, в котором хранится актуальный helm chart cert-manager:
 
@@ -726,14 +745,15 @@ If TLS is enabled for the Ingress, a Secret containing the certificate and key m
 
 `kubectl apply --validate=false -f https://github.com/jetstack/cert-manager/releases/download/v0.15.0/cert-manager.crds.yaml`
 
-````
+```
 customresourcedefinition.apiextensions.k8s.io/certificates.certmanager.k8s.io created
 customresourcedefinition.apiextensions.k8s.io/certificaterequests.certmanager.k8s.io created
 customresourcedefinition.apiextensions.k8s.io/challenges.certmanager.k8s.io created
 customresourcedefinition.apiextensions.k8s.io/clusterissuers.certmanager.k8s.io created
 customresourcedefinition.apiextensions.k8s.io/issuers.certmanager.k8s.io created
 customresourcedefinition.apiextensions.k8s.io/orders.certmanager.k8s.io created
-````
+```
+
 Еще одна подготовка:
 
 `kubectl label namespace cert-manager certmanager.k8s.io/disable-validation="true"`
@@ -742,7 +762,7 @@ customresourcedefinition.apiextensions.k8s.io/orders.certmanager.k8s.io created
 
 `helm ugrade --install cert-manager jetstack/cert-manager --namespace cert-manager --version v0.15.0`
 
-````
+```
 Release "cert-manager" does not exist. Installing it now.
 NAME: cert-manager
 LAST DEPLOYED: Wed May 27 19:35:17 2020
@@ -766,7 +786,7 @@ Certificates for Ingress resources, take a look at the `ingress-shim`
 documentation:
 
 https://docs.cert-manager.io/en/latest/reference/ingress-shim.html
-````
+```
 
 Для cert-manager также необходимо создать namespace cert-manager. Добавил манифест создания namespace.
 
@@ -778,28 +798,28 @@ https://docs.cert-manager.io/en/latest/reference/ingress-shim.html
 
 9. Кастомизировал установку chartmuseum
 
-````
+```
 helm upgrade --install chartmuseum stable/chartmuseum \
 --wait --namespace=chartmuseum --version=2.3.2 \
 -f kubernetes-templating/chartmuseum/values.yaml
-````
+```
 
 Проверим, что release chartmuseum установился:
 
 `helm ls -n chartmuseum`
 
-````
+```
 NAME            NAMESPACE       REVISION        UPDATED                                 STATUS          CHART                   APP VERSION
 chartmuseum     chartmuseum     8               2020-05-29 02:16:14.744343 +0300 MSK    deployed        chartmuseum-2.3.2       0.8.2
-````
+```
 
 10. Установил `Harbor`:
 
-````
+```
 helm upgrade --install harbor-release harbor/harbor \
 --wait --namespace=harbor --version=1.1.2 \
 -f kubernetes-templating/harbor/values.yaml
-````
+```
 
 11. Инициализировал средствами helm структуру директории с содержимым будущего helm chart:
 
@@ -809,10 +829,10 @@ helm upgrade --install harbor-release harbor/harbor \
 
 13. Задеплоил чарт:
 
-````
+```
 kubectl create ns hipster-shop
 helm upgrade --install hipster-shop kubernetes-templating/hipster-shop --namespace hipster-shop
-````
+```
 
 14. Отделил `frontend` от всего приложения:
 
@@ -820,9 +840,9 @@ helm upgrade --install hipster-shop kubernetes-templating/hipster-shop --namespa
 
 15. В директории templates чарта frontend создал файлы:
 
- - deployment.yaml (содержить соответствующую часть из файла all-hipster-shop.yaml)
- - service.yaml (содержить соответствующую часть из файла all-hipster-shop.yaml)
- - ingress.yaml (разворачивает ingress с доменным именем shop.34.91.63.42.nip.io)
+- deployment.yaml (содержить соответствующую часть из файла all-hipster-shop.yaml)
+- service.yaml (содержить соответствующую часть из файла all-hipster-shop.yaml)
+- ingress.yaml (разворачивает ingress с доменным именем shop.34.91.63.42.nip.io)
 
 16. Установил chart `frontend` в namespace `hipster-shop`:
 
@@ -834,10 +854,10 @@ helm upgrade --install hipster-shop kubernetes-templating/hipster-shop --namespa
 
 ```yaml
 dependencies:
-- name: frontend
-  version: 0.1.0
-  repository: "file://../frontend"
-````
+  - name: frontend
+    version: 0.1.0
+    repository: "file://../frontend"
+```
 
 19. Обновил зависимости:
 
@@ -845,20 +865,20 @@ dependencies:
 
 20. Изменил NodePort для frontend в release, не меняя его в самом chart:
 
-````
+```
 helm upgrade --install hipster-shop \ kubernetes-templating/hipster-shop \
 --namespace hipster-shop \
 --set frontend.service.NodePort=31234
-````
+```
 
 21. Установил плагин для работы c `helm-secret`:
 
-````
+```
 brew install sops
 brew install gnupg2
 brew install gnu-getopt
 helm plugin install https://github.com/futuresimple/helm-secrets --version 2.0.2
-````
+```
 
 22. Сгенерировал ключи:
 
@@ -873,30 +893,30 @@ helm plugin install https://github.com/futuresimple/helm-secrets --version 2.0.2
 ```yaml
 visibleKey: ENC[AES256_GCM,data:yIsTDNosywhsw8M=,iv:y+2MIMp0rnmdiUz4XJdRccgHQ8jxmWmJxJUdP9cERWY=,tag:Jj7iNNO1IKqKNE/5pO+beg==,type:str]
 sops:
-    kms: []
-    gcp_kms: []
-    azure_kv: []
-    lastmodified: '2020-06-01T10:56:42Z'
-    mac: ENC[AES256_GCM,data:awAyeNNDfHguoH0nnRxDbYOqknY6qxI2aJvyormjTc+dssCLBdR5yLzuTOhrweLB3OkNBb6CTVmURQGokcfJRNTHYC9FDh6+XzRrMsjApMJF0a1QN8R15vcH2MvlNavxPTt2RiEAz7x+nc+zTCZJDzt4zAWyGW1Xkg9MEYHx7eM=,iv:poJiYpZfzExTAPXxGPne+zYRIhX+Pk8Ag4ilCT0WrDw=,tag:3SSZuNNoQbQH7N6V6DubmA==,type:str]
-    pgp:
-    -   created_at: '2020-06-01T10:56:41Z'
-        enc: |
-            -----BEGIN PGP MESSAGE-----
+  kms: []
+  gcp_kms: []
+  azure_kv: []
+  lastmodified: "2020-06-01T10:56:42Z"
+  mac: ENC[AES256_GCM,data:awAyeNNDfHguoH0nnRxDbYOqknY6qxI2aJvyormjTc+dssCLBdR5yLzuTOhrweLB3OkNBb6CTVmURQGokcfJRNTHYC9FDh6+XzRrMsjApMJF0a1QN8R15vcH2MvlNavxPTt2RiEAz7x+nc+zTCZJDzt4zAWyGW1Xkg9MEYHx7eM=,iv:poJiYpZfzExTAPXxGPne+zYRIhX+Pk8Ag4ilCT0WrDw=,tag:3SSZuNNoQbQH7N6V6DubmA==,type:str]
+  pgp:
+    - created_at: "2020-06-01T10:56:41Z"
+      enc: |
+        -----BEGIN PGP MESSAGE-----
 
-            hQEMA3Rf9rajW18EAQf+P4AuwThQpkeR40VniIqzKaK8ui242DNN7tHO9UbrcHgE
-            b1LGD/26rFdbxMTSnchRYKsaMgpIqJgXcDOqWYuPpzlBg6SZEEV3UL9aoZW1P0Ke
-            OJNqZOZa6FwNGUzna94uipFIncXMzrUjvE0DPuyOcILJbNe+wiyA0xvF6KwuE40I
-            XuL94pB9GSsAPtxxnOS97CnF3+PDJ3ULWG35BbNn2zgSs7So7usgjZUVex3+O7VZ
-            PmhXmzI3H73LHDvTIX+ML1e6Au2KoglKb5cbd/BoZbuphiUR4yRimR8x/7mC1BZC
-            ncO5glYTs90i6Fz2s+zQGDv5pI4emDyh/VhieOJbS9JcAZADFhV5x6boOZmzXyu6
-            D8yR3d7/YpZAwzxLamdgeuTbNJ7nmJh76lCOleZtJvDWv2HRAV0mb7SNXnPJSnjK
-            hkSnWDH2Za5VjvpxeT6CoykZMO6BhETMWmtLL4s=
-            =hyvb
-            -----END PGP MESSAGE-----
-        fp: 7A03AF80B5B370F807A0936E3137BF39439690DD
-    unencrypted_suffix: _unencrypted
-    version: 3.5.0
-````
+        hQEMA3Rf9rajW18EAQf+P4AuwThQpkeR40VniIqzKaK8ui242DNN7tHO9UbrcHgE
+        b1LGD/26rFdbxMTSnchRYKsaMgpIqJgXcDOqWYuPpzlBg6SZEEV3UL9aoZW1P0Ke
+        OJNqZOZa6FwNGUzna94uipFIncXMzrUjvE0DPuyOcILJbNe+wiyA0xvF6KwuE40I
+        XuL94pB9GSsAPtxxnOS97CnF3+PDJ3ULWG35BbNn2zgSs7So7usgjZUVex3+O7VZ
+        PmhXmzI3H73LHDvTIX+ML1e6Au2KoglKb5cbd/BoZbuphiUR4yRimR8x/7mC1BZC
+        ncO5glYTs90i6Fz2s+zQGDv5pI4emDyh/VhieOJbS9JcAZADFhV5x6boOZmzXyu6
+        D8yR3d7/YpZAwzxLamdgeuTbNJ7nmJh76lCOleZtJvDWv2HRAV0mb7SNXnPJSnjK
+        hkSnWDH2Za5VjvpxeT6CoykZMO6BhETMWmtLL4s=
+        =hyvb
+        -----END PGP MESSAGE-----
+      fp: 7A03AF80B5B370F807A0936E3137BF39439690DD
+  unencrypted_suffix: _unencrypted
+  version: 3.5.0
+```
 
 24. Создал в директории kubernetes- templating/frontend/templates еще один файл ]`secret.yaml`:
 
@@ -907,20 +927,21 @@ metadata:
   name: secret
 type: Opaque
 data:
-  visibleKey: {{ .Values.visibleKey | b64enc | quote }}
-````
+  visibleKey: { { .Values.visibleKey | b64enc | quote } }
+```
 
 25. Запустил установку:
 
-````
+```
 helm secrets upgrade --install frontend kubernetes-templating/frontend --namespace hipster-shop \
 -f kubernetes-templating/frontend/values.yaml \ -f kubernetes-templating/frontend/secrets.yaml
-````
+```
+
 Проверил, что secrets создался и работает:
 
 `kubectl get secrets secret -n hipster-shop -o yaml`
 
-````
+```
 apiVersion: v1
 data:
   visibleKey: aGlkZGVuVmFsdWU=
@@ -938,19 +959,19 @@ metadata:
   selfLink: /api/v1/namespaces/hipster-shop/secrets/secret
   uid: 87689fb7-c3d8-4cbf-bc3f-5ed1b445e6b4
 type: Opaque
-````
+```
 
 - В CI/CD можно использовать helm-secrets для авторизации.
 
 26. Поместил все получившиеся helm chart's в установленный harbor в публичный проект:
 
-````
+```
 cat repo.sh
 #!/bin/bash
 helm repo add templating https://harbor.34.91.63.42.nip.io/chartrepo/library
 helm push --username admin --password Harbor12345  frontend/ templating
 helm push --username admin --password Harbor12345  hipster-shop/ templating
-````
+```
 
 27. Вынесите манифесты описывающие service и deployment для этих микросервисов из файла all-hipster- shop.yaml в директорию kubernetes-templating/kubecfg.
 
@@ -993,36 +1014,36 @@ spec:
         name: paymentservice
     spec:
       containers:
-      - args: []
-        env:
-        - name: PORT
-          value: "50051"
-        image: gcr.io/google-samples/microservices-demo/paymentservice:v0.1.3
-        imagePullPolicy: IfNotPresent
-        livenessProbe:
-          exec:
-            command:
-            - /bin/grpc_health_probe
-            - -addr=:50051
-          initialDelaySeconds: 20
-          periodSeconds: 15
-        name: server
-        ports:
-        - containerPort: 50051
-        readinessProbe:
-          exec:
-            command:
-            - /bin/grpc_health_probe
-            - -addr=:50051
-          initialDelaySeconds: 20
-          periodSeconds: 15
-        securityContext:
-          readOnlyRootFilesystem: true
-          runAsNonRoot: true
-          runAsUser: 10001
-        stdin: false
-        tty: false
-        volumeMounts: []
+        - args: []
+          env:
+            - name: PORT
+              value: "50051"
+          image: gcr.io/google-samples/microservices-demo/paymentservice:v0.1.3
+          imagePullPolicy: IfNotPresent
+          livenessProbe:
+            exec:
+              command:
+                - /bin/grpc_health_probe
+                - -addr=:50051
+            initialDelaySeconds: 20
+            periodSeconds: 15
+          name: server
+          ports:
+            - containerPort: 50051
+          readinessProbe:
+            exec:
+              command:
+                - /bin/grpc_health_probe
+                - -addr=:50051
+            initialDelaySeconds: 20
+            periodSeconds: 15
+          securityContext:
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 10001
+          stdin: false
+          tty: false
+          volumeMounts: []
       imagePullSecrets: []
       initContainers: []
       terminationGracePeriodSeconds: 30
@@ -1037,8 +1058,8 @@ metadata:
   name: paymentservice
 spec:
   ports:
-  - port: 50051
-    targetPort: 50051
+    - port: 50051
+      targetPort: 50051
   selector:
     name: paymentservice
   type: ClusterIP
@@ -1068,36 +1089,36 @@ spec:
         name: shippingservice
     spec:
       containers:
-      - args: []
-        env:
-        - name: PORT
-          value: "50051"
-        image: gcr.io/google-samples/microservices-demo/shippingservice:v0.1.3
-        imagePullPolicy: IfNotPresent
-        livenessProbe:
-          exec:
-            command:
-            - /bin/grpc_health_probe
-            - -addr=:50051
-          initialDelaySeconds: 20
-          periodSeconds: 15
-        name: server
-        ports:
-        - containerPort: 50051
-        readinessProbe:
-          exec:
-            command:
-            - /bin/grpc_health_probe
-            - -addr=:50051
-          initialDelaySeconds: 20
-          periodSeconds: 15
-        securityContext:
-          readOnlyRootFilesystem: true
-          runAsNonRoot: true
-          runAsUser: 10001
-        stdin: false
-        tty: false
-        volumeMounts: []
+        - args: []
+          env:
+            - name: PORT
+              value: "50051"
+          image: gcr.io/google-samples/microservices-demo/shippingservice:v0.1.3
+          imagePullPolicy: IfNotPresent
+          livenessProbe:
+            exec:
+              command:
+                - /bin/grpc_health_probe
+                - -addr=:50051
+            initialDelaySeconds: 20
+            periodSeconds: 15
+          name: server
+          ports:
+            - containerPort: 50051
+          readinessProbe:
+            exec:
+              command:
+                - /bin/grpc_health_probe
+                - -addr=:50051
+            initialDelaySeconds: 20
+            periodSeconds: 15
+          securityContext:
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 10001
+          stdin: false
+          tty: false
+          volumeMounts: []
       imagePullSecrets: []
       initContainers: []
       terminationGracePeriodSeconds: 30
@@ -1112,18 +1133,18 @@ metadata:
   name: shippingservice
 spec:
   ports:
-  - port: 50051
-    targetPort: 50051
+    - port: 50051
+      targetPort: 50051
   selector:
     name: shippingservice
   type: ClusterIP
-````
+```
 
 31. Установил их:
 
 `kubecfg update services.jsonnet --namespace hipster-shop`
 
-````
+```
 INFO  Validating services paymentservice
 INFO  validate object "/v1, Kind=Service"
 INFO  Validating deployments paymentservice
@@ -1135,7 +1156,7 @@ INFO  validate object "/v1, Kind=Service"
 INFO  Fetching schemas for 4 resources
 INFO  Updating deployments paymentservice
 INFO  Updating deployments shippingservice
-````
+```
 
 32. Установил kustomize:
 
@@ -1151,9 +1172,9 @@ metadata:
   namespace: hipster-shop
 spec:
   ports:
-  - name: grpc
-    port: 7000
-    targetPort: 7000
+    - name: grpc
+      port: 7000
+      targetPort: 7000
   selector:
     app: currencyservice
   type: ClusterIP
@@ -1173,39 +1194,40 @@ spec:
         app: currencyservice
     spec:
       containers:
-      - env:
-        - name: REDDIS_ADR
-          value: redis-cart-master:6379
-        - name: PORT
-          value: "7000"
-        image: gcr.io/google-samples/microservices-demo/currencyservice:v0.1.3
-        livenessProbe:
-          exec:
-            command:
-            - /bin/grpc_health_probe
-            - -addr=:7000
-        name: server
-        ports:
-        - containerPort: 7000
-          name: grpc
-        readinessProbe:
-          exec:
-            command:
-            - /bin/grpc_health_probe
-            - -addr=:7000
-        resources:
-          limits:
-            cpu: 200m
-            memory: 128Mi
-          requests:
-            cpu: 100m
-            memory: 64Mi
-````
+        - env:
+            - name: REDDIS_ADR
+              value: redis-cart-master:6379
+            - name: PORT
+              value: "7000"
+          image: gcr.io/google-samples/microservices-demo/currencyservice:v0.1.3
+          livenessProbe:
+            exec:
+              command:
+                - /bin/grpc_health_probe
+                - -addr=:7000
+          name: server
+          ports:
+            - containerPort: 7000
+              name: grpc
+          readinessProbe:
+            exec:
+              command:
+                - /bin/grpc_health_probe
+                - -addr=:7000
+          resources:
+            limits:
+              cpu: 200m
+              memory: 128Mi
+            requests:
+              cpu: 100m
+              memory: 64Mi
+```
+
 Создаем две среды выкатки: dev и prod.
 
 Проверяем для dev:
 
-````yaml
+```yaml
 apiVersion: v1
 kind: Service
 metadata:
@@ -1215,9 +1237,9 @@ metadata:
   namespace: hipster-shop-dev
 spec:
   ports:
-  - name: grpc
-    port: 7000
-    targetPort: 7000
+    - name: grpc
+      port: 7000
+      targetPort: 7000
   selector:
     app: currencyservice
     environment: dev
@@ -1242,36 +1264,37 @@ spec:
         environment: dev
     spec:
       containers:
-      - env:
-        - name: REDIS_ADDR
-          value: redis-cart:6379
-        - name: REDDIS_ADR
-          value: redis-cart-master:6379
-        - name: PORT
-          value: "7000"
-        image: gcr.io/google-samples/microservices-demo/currencyservice:v0.1.3
-        livenessProbe:
-          exec:
-            command:
-            - /bin/grpc_health_probe
-            - -addr=:7000
-        name: server
-        ports:
-        - containerPort: 7000
-          name: grpc
-        readinessProbe:
-          exec:
-            command:
-            - /bin/grpc_health_probe
-            - -addr=:7000
-        resources:
-          limits:
-            cpu: 200m
-            memory: 128Mi
-          requests:
-            cpu: 100m
-            memory: 64Mi
-````
+        - env:
+            - name: REDIS_ADDR
+              value: redis-cart:6379
+            - name: REDDIS_ADR
+              value: redis-cart-master:6379
+            - name: PORT
+              value: "7000"
+          image: gcr.io/google-samples/microservices-demo/currencyservice:v0.1.3
+          livenessProbe:
+            exec:
+              command:
+                - /bin/grpc_health_probe
+                - -addr=:7000
+          name: server
+          ports:
+            - containerPort: 7000
+              name: grpc
+          readinessProbe:
+            exec:
+              command:
+                - /bin/grpc_health_probe
+                - -addr=:7000
+          resources:
+            limits:
+              cpu: 200m
+              memory: 128Mi
+            requests:
+              cpu: 100m
+              memory: 64Mi
+```
+
 Для prod:
 
 ```yaml
@@ -1284,9 +1307,9 @@ metadata:
   namespace: hipster-shop-prod
 spec:
   ports:
-  - name: grpc
-    port: 7000
-    targetPort: 7000
+    - name: grpc
+      port: 7000
+      targetPort: 7000
   selector:
     app: currencyservice
     environment: prod
@@ -1311,44 +1334,45 @@ spec:
         environment: prod
     spec:
       containers:
-      - env:
-        - name: REDDIS_ADR
-          value: redis-cart-master:6379
-        - name: PORT
-          value: "7000"
-        image: gcr.io/google-samples/microservices-demo/currencyservice:v0.1.3
-        livenessProbe:
-          exec:
-            command:
-            - /bin/grpc_health_probe
-            - -addr=:7000
-        name: server
-        ports:
-        - containerPort: 7000
-          name: grpc
-        readinessProbe:
-          exec:
-            command:
-            - /bin/grpc_health_probe
-            - -addr=:7000
-        resources:
-          limits:
-            cpu: 200m
-            memory: 128Mi
-          requests:
-            cpu: 100m
-            memory: 64Mi
-````
+        - env:
+            - name: REDDIS_ADR
+              value: redis-cart-master:6379
+            - name: PORT
+              value: "7000"
+          image: gcr.io/google-samples/microservices-demo/currencyservice:v0.1.3
+          livenessProbe:
+            exec:
+              command:
+                - /bin/grpc_health_probe
+                - -addr=:7000
+          name: server
+          ports:
+            - containerPort: 7000
+              name: grpc
+          readinessProbe:
+            exec:
+              command:
+                - /bin/grpc_health_probe
+                - -addr=:7000
+          resources:
+            limits:
+              cpu: 200m
+              memory: 128Mi
+            requests:
+              cpu: 100m
+              memory: 64Mi
+```
+
 Вкатываем:
 
 `kustomize build . | kubectl apply -f -`
 
-````
+```
 service/cartservice created
 deployment.apps/cartservice created
-````
+```
 
-### ДЗ со *
+### ДЗ со \*
 
 1. Установка nginx-ingress, cert-manager и harbor в helmfile.
 
@@ -1358,7 +1382,7 @@ deployment.apps/cartservice created
 
 Создаем `helmfile`:
 
-````yaml
+```yaml
 repositories:
   - name: stable
     url: https://kubernetes-charts.storage.googleapis.com
@@ -1408,12 +1432,13 @@ releases:
     version: 2.13.0
     values:
       - ./chartmuseum/values.yaml
-````
+```
+
 Проверяем:
 
 `helmfile lint`
 
-````
+```
 Adding repo stable https://kubernetes-charts.storage.googleapis.com
 "stable" has been added to your repositories
 
@@ -1476,40 +1501,39 @@ Linting release=chartmuseum, chart=/var/folders/1x/s6sbmsqs47jdq5xzfkcglg380000g
 ==> Linting /var/folders/1x/s6sbmsqs47jdq5xzfkcglg380000gn/T/860827977/chartmuseum/2.13.0/stable/chartmuseum/chartmuseum
 
 1 chart(s) linted, 0 chart(s) failed
-````
+```
 
 Вкатываем:
 
 `helmfile sync`
 
-
 2. Добавление helm chart's:
 
 - Для примера будем добавлять chart mysql:
 
-   `git clone https://github.com/stakater/chart-mysql.git`
+  `git clone https://github.com/stakater/chart-mysql.git`
 
- - Переходим в директорию чарта. Опциональ проверяем линтом:
+- Переходим в директорию чарта. Опциональ проверяем линтом:
 
-   `helm lint`
+  `helm lint`
 
- - Упаковываем чарт в архив:
+- Упаковываем чарт в архив:
 
-   `helm package .`
+  `helm package .`
 
-  - Отправляем архив в chartmuseum:
+- Отправляем архив в chartmuseum:
 
-    `curl -L --data-binary "@mysql-1.0.3.tgz" https://chartmuseum.34.91.63.42.nip.io/api/charts`
+  `curl -L --data-binary "@mysql-1.0.3.tgz" https://chartmuseum.34.91.63.42.nip.io/api/charts`
 
-    `{"saved":true}`
+  `{"saved":true}`
 
- - Обновляем репозиторий:
+- Обновляем репозиторий:
 
-   `helm repo update`
+  `helm repo update`
 
- - Устанавливаем чарт:
+- Устанавливаем чарт:
 
-   `helm install chartmuseum/mysql --name mysql`
+  `helm install chartmuseum/mysql --name mysql`
 
 3. Установил Redis как зависимость,используя community chart's.
 
@@ -1531,31 +1555,31 @@ spec:
         app: redis-cart
     spec:
       containers:
-      - name: redis
-        image: redis:alpine
-        ports:
-        - containerPort: 6379
-        readinessProbe:
-          periodSeconds: 5
-          tcpSocket:
-            port: 6379
-        livenessProbe:
-          periodSeconds: 5
-          tcpSocket:
-            port: 6379
-        volumeMounts:
-        - mountPath: /data
-          name: redis-data
-        resources:
-          limits:
-            memory: 256Mi
-            cpu: 125m
-          requests:
-            cpu: 70m
-            memory: 200Mi
+        - name: redis
+          image: redis:alpine
+          ports:
+            - containerPort: 6379
+          readinessProbe:
+            periodSeconds: 5
+            tcpSocket:
+              port: 6379
+          livenessProbe:
+            periodSeconds: 5
+            tcpSocket:
+              port: 6379
+          volumeMounts:
+            - mountPath: /data
+              name: redis-data
+          resources:
+            limits:
+              memory: 256Mi
+              cpu: 125m
+            requests:
+              cpu: 70m
+              memory: 200Mi
       volumes:
-      - name: redis-data
-        emptyDir: {}
+        - name: redis-data
+          emptyDir: {}
 ---
 apiVersion: v1
 kind: Service
@@ -1566,16 +1590,17 @@ spec:
   selector:
     app: redis-cart
   ports:
-  - name: redis
-    port: 6379
-    targetPort: 6379
-````
+    - name: redis
+      port: 6379
+      targetPort: 6379
+```
+
 Добавляем репозиторий с redis.
 
-````
+```
 helm repo add bitnami https://charts.bitnami.com/bitnami
 "bitnami" has been added to your repositories
-````
+```
 
 Добавляем зависимость в hipster-shop/Charts.yaml:
 
@@ -1583,17 +1608,15 @@ helm repo add bitnami https://charts.bitnami.com/bitnami
 - name: redis
   version: 10.6.17
   repository: https://charts.bitnami.com/bitnami
-````
+```
 
- - Необходимо изменить значение переменной окружения REDIS_ADDR (redis-cart > redis-cart-master) в cartservice Deployment.
-
+- Необходимо изменить значение переменной окружения REDIS_ADDR (redis-cart > redis-cart-master) в cartservice Deployment.
 
 Обновляем зависимости: `helm dep update kubernetes-templating/hipster-shop`
 
 Вкатываем обновление релиза:
 
 `helm upgrade --install hipster-shop kubernetes-templating/hipster-shop --namespace hipster-shop`
-
 
 ## kubernetes-operators
 
@@ -1607,9 +1630,10 @@ helm repo add bitnami https://charts.bitnami.com/bitnami
 
 `kubectl apply -f deploy/cr.yml`
 
-````
+```
 error: unable to recognize "deploy/cr.yml": no matches for kind "MySQL" in version "otus.homework/v1"
-````
+```
+
 Ошибка связана с отсутсвием объектов типа MySQL в API kubernetes.
 
 3. Создал `CustomResourceDefinition` - это ресурс для определения других ресурсов (далее CRD)
@@ -1628,19 +1652,19 @@ error: unable to recognize "deploy/cr.yml": no matches for kind "MySQL" in versi
 
 4. Пробуем взаимодейтсвовать с объектами:
 
-````
+```
 $ kubectl get crd
 NAME                   CREATED AT
 mysqls.otus.homework   2020-06-01T17:30:55Z
-````
+```
 
-````
+```
 > kubectl get mysqls.otus.homework
 NAME             AGE
 mysql-instance   91s
-````
+```
 
-````
+```
 > kubectl describe mysqls.otus.homework mysql-instance
 Name:         mysql-instance
 Namespace:    default
@@ -1680,27 +1704,28 @@ Spec:
   storage_size:  1Gi
 usless_data:     useless info
 Events:          <none>
-````
+```
 
 5. Использовал validation.
 
 Для начала удаляем CR mysql-instance:
 
-````
+```
 > kubectl delete mysqls.otus.homework mysql-instance
 mysql.otus.homework "mysql-instance" deleted
-````
+```
 
 Добавляем в спецификацию CRD ( `spec` ) параметры `validation` и применяем их снова:
 
-````
+```
 kubectl apply -f deploy/crd.yml
 kubectl apply -f deploy/cr.yml
-````
+```
 
 ```
 error: error validating "deploy/cr.yml": error validating data: ValidationError(MySQL): unknown field "usless_data" in homework.otus.v1.MySQL; if you choose to ignore these errors, turn validation off with --validate=false
-````
+```
+
 6. Убираем из cr.yml:
 
 `usless_data: "useless info"`
@@ -1713,62 +1738,65 @@ error: error validating "deploy/cr.yml": error validating data: ValidationError(
 
 7. Из описания mysql убрал строчку из спецификации и манифест был принят API сервером. Для того, чтобы этого избежать, добавил описание обязательный полей в CustomResourceDefinition:
 
-````
+```
 required: ["spec"]
 required: ["image", "database", "password", "storage_size"]
-````
+```
 
 8. Создал MySQL Operstor.
 
 Удалим все ресурсы, созданные контроллером:
 
-````
+```
 kubectl delete mysqls.otus.homework mysql-instance
 kubectl delete deployments.apps mysql-instance
 kubectl delete pvc mysql-instance-pvc
 kubectl delete pv mysql-instance-pv
 kubectl delete svc mysql-instance
-````
+```
+
 Для удаления ресурсов, сделаем deployment,svc,pv,pvc дочерними ресурсами к mysql, для этого в тело функции mysql_on_create , после генерации json манифестов добавим:
 
-````python
+```python
     # Определяем, что созданные ресурсы являются дочерними к управляемому
 CustomResource:
 kopf.append_owner_reference(persistent_volume, owner=body) kopf.append_owner_reference(persistent_volume_claim, owner=body) # addopt
 kopf.append_owner_reference(service, owner=body) kopf.append_owner_reference(deployment, owner=body)
     # ^ Таким образом при удалении CR удалятся все, связанные с ним pv,pvc,svc,deployments
-````
+```
+
 В конец файла добавим обработку события удаления ресурса mysql:
 
 ```python
 @kopf.on.delete('otus.homework', 'v1', 'mysqls')
 def delete_object_make_backup(body, **kwargs):
 return {'message': "mysql and its children resources deleted"}
-````
+```
 
 Запускаем оператор:
 
 `kopf run mysql-operator.py`
 
-````
+```
 [2020-06-02 23:23:37,597] kopf.objects         [INFO    ] [default/mysql-instance] Handler 'mysql_on_create' succeeded.
 [2020-06-02 23:23:37,597] kopf.objects         [INFO    ] [default/mysql-instance] All handlers succeeded for creation.
-````
+```
+
 Проверяем что появились pvc:
 
-````
+```
 NAME                        STATUS   VOLUME                     CAPACITY   ACCESS MODES   STORAGECLASS   AGE
 backup-mysql-instance-pvc   Bound    backup-mysql-instance-pv   1Gi        RWO                           5s
 mysql-instance-pvc          Bound    mysql-instance-pv          1Gi        RWO                           5s
-````
+```
 
 `kubectl get pv`
 
-````
+```
 NAME                       CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS   CLAIM                               STORAGECLASS   REASON   AGE
 backup-mysql-instance-pv   1Gi        RWO            Retain           Bound    default/backup-mysql-instance-pvc                           7s
 mysql-instance-pv          1Gi        RWO            Retain           Bound    default/mysql-instance-pvc                                  7s
-````
+```
 
 Добавим создание pv, pvc для backup и restore job. Для этого после создания deployment добавим следующий код:
 
@@ -1788,7 +1816,8 @@ mysql-instance-pv          1Gi        RWO            Retain           Bound    d
         api.create_namespaced_persistent_volume_claim('default', backup_pvc)
     except kubernetes.client.rest.ApiException:
         pass
-````
+```
+
 Далее реализуем создание бэкапов и восстановление из них. Для этого будут использоваться Job. Поскольку при запуске Job, повторно ее запустить нельзя, нам нужно реализовать логику удаления успешно законченных jobs c определенным именем.
 
 Для этого выше всех обработчиков событий (под функций render_template) добавим следующую функцию:
@@ -1806,7 +1835,7 @@ def delete_success_jobs(mysql_instance_name):
                 api.delete_namespaced_job(jobname,
                                           'default',
                                           propagation_policy='Background')
-````
+```
 
 Также нам понадобится функция, для ожидания пока наша backup job завершится, чтобы дождаться пока backup выполнится перед удалением mysql deployment, svc, pv, pvc.
 Опишем ее:
@@ -1826,7 +1855,7 @@ def wait_until_job_end(jobname):
                 if job.status.succeeded == 1:
                     print(f"job with { jobname }  success")
                     job_finished = True
-````
+```
 
 Добавим запуск backup-job и удаление выполненных jobs в функцию delete_object_make_backup:
 
@@ -1847,7 +1876,7 @@ def wait_until_job_end(jobname):
         'database': database})
     api.create_namespaced_job('default', backup_job)
     wait_until_job_end(f"backup-{name}-job")
-````
+```
 
 Добавим генерацию json из шаблона для restore-job:
 
@@ -1857,7 +1886,7 @@ restore_job = render_template('restore-job.yml.j2', {
         'image': image,
         'password': password,
         'database': database})
-````
+```
 
 Добавим попытку восстановиться из бэкапов после deployment mysql:
 
@@ -1867,13 +1896,13 @@ restore_job = render_template('restore-job.yml.j2', {
         api.create_namespaced_job('default', restore_job)
     except kubernetes.client.rest.ApiException:
         pass
-````
+```
 
 Добавим зависимость restore-job от объектов mysql (возле других owner_reference):
 
 ```python
 kopf.append_owner_reference(restore_job, owner=body)
-````
+```
 
 Запускаем оператор (из директории build):
 
@@ -1885,14 +1914,15 @@ kopf.append_owner_reference(restore_job, owner=body)
 
 `kubectl get pvc`
 
-````
+```
 NAME                        STATUS   VOLUME                     CAPACITY   ACCESS MODES   STORAGECLASS   AGE
 backup-mysql-instance-pvc   Bound    backup-mysql-instance-pv   1Gi        RWO                           29m
 mysql-instance-pvc          Bound    mysql-instance-pv          1Gi        RWO                           14s
-````
+```
+
 Проверим, что все работает, для этого заполним базу созданного mysqlinstance:
 
-````
+```
 export MYSQLPOD=$(kubectl get pods -l app=mysql-instance -o jsonpath="{.items[*].metadata.name}")
 
 kubectl exec -it $MYSQLPOD -- mysql -u root -potuspassword -e "CREATE TABLE test (id smallint unsigned not null auto_increment, name varchar(20) not null, constraint pk_example primary key (id) );" otus-database
@@ -1916,22 +1946,25 @@ mysql: [Warning] Using a password on the command line interface can be insecure.
 |  1 | some data   |
 |  2 | some data-2 |
 +----+-------------+
-````
+```
+
 Удалим mysql-instance:
 
-````
+```
 kubectl delete mysqls.otus.homework mysql-instance
 mysql.otus.homework "mysql-instance" deleted
-````
+```
+
 Создадим заново mysql-instance:
 
-````
+```
 kubectl apply -f cr.yml
 mysql.otus.homework/mysql-instance created
-````
+```
+
 После выполняем:
 
-````
+```
 export MYSQLPOD=$(kubectl get pods -l app=mysql-instance -o jsonpath="{.items[*].metadata.name}")
 
 kubectl exec -it $MYSQLPOD -- mysql -potuspassword -e "select * from test;" otus-database
@@ -1942,7 +1975,8 @@ mysql: [Warning] Using a password on the command line interface can be insecure.
 |  1 | some data   |
 |  2 | some data-2 |
 +----+-------------+
-````
+```
+
 Создаем `Dockerfile`и пушим все в свой репозиторий:
 
 ```
@@ -1951,26 +1985,26 @@ COPY templates ./templates
 COPY mysql-operator.py ./mysql-operator.py
 RUN pip install kopf kubernetes pyyaml jinja2
 CMD kopf run /mysql-operator.py
-````
+```
 
 Создадим и применим манифесты в папке kubernetes-operator/deploy:
 
- - service-account.yml
- - role.yml
- - role-binding.yml
- - deploy-operator.yml
+- service-account.yml
+- role.yml
+- role-binding.yml
+- deploy-operator.yml
 
 Применним манифесты:
- - service-account.yml
- - role.yml role-binding.yml
- - deploy-operator.yml
 
+- service-account.yml
+- role.yml role-binding.yml
+- deploy-operator.yml
 
 Проверяем что появились pvc.
 
 Заполняем базу созданного mysql-instance:
 
-````
+```
 export MYSQLPOD=$(kubectl get pods -l app=mysql-instance -o jsonpath="{.items[*].metadata.name}")
 
 kubectl exec -it $MYSQLPOD -- mysql -potuspassword -e "select * from test;" otus-database
@@ -1981,18 +2015,20 @@ mysql: [Warning] Using a password on the command line interface can be insecure.
 |  1 | some data   |
 |  2 | some data-2 |
 +----+-------------+
-````
+```
+
 Удалим mysql-instance:
 
-````
+```
 kubectl delete mysqls.otus.homework mysql-instance
 mysql.otus.homework "mysql-instance" deleted
-````
+```
+
 Создадим заново:
 
 `kubectl apply -f deploy/cr.yml`
 
-````
+```
 export MYSQLPOD=$(kubectl get pods -l app=mysql-instance -o jsonpath="{.items[*].metadata.name}")
 kubectl exec -it $MYSQLPOD -- mysql -potuspassword -e "select * from test;" otus-database
 mysql: [Warning] Using a password on the command line interface can be insecure.
@@ -2002,8 +2038,7 @@ mysql: [Warning] Using a password on the command line interface can be insecure.
 |  1 | some data   |
 |  2 | some data-2 |
 +----+-------------+
-````
-
+```
 
 ## kubernetes-monitoring
 
@@ -2021,9 +2056,9 @@ mysql: [Warning] Using a password on the command line interface can be insecure.
 
 `helm init custom-nginx`
 
- В чарте удалил все лишние и доавил манифесты приложения nginx.
+В чарте удалил все лишние и доавил манифесты приложения nginx.
 
- Шаблонизировал чарты.
+Шаблонизировал чарты.
 
 4. Установил chart nginx:
 
@@ -2033,24 +2068,25 @@ mysql: [Warning] Using a password on the command line interface can be insecure.
 
 `kubectl get pods`
 
-````
+```
 NAME                     READY   STATUS    RESTARTS   AGE
 nginx-869f7cf565-524lv   2/2     Running   0          90m
 nginx-869f7cf565-9csnm   2/2     Running   0          90m
 nginx-869f7cf565-fh75r   2/2     Running   0          90m
-````
+```
 
 Делаем пробросов портов:
 
 `kubectl port-forward service/nginx 9113:9113`
 
-````
+```
 Forwarding from 127.0.0.1:9113 -> 9113
 Forwarding from [::1]:9113 -> 9113
-````
+```
+
 `curl http://127.0.0.1:9113/metrics`
 
-````
+```
 # HELP nginx_connections_accepted Accepted client connections
 # TYPE nginx_connections_accepted counter
 nginx_connections_accepted 4
@@ -2078,7 +2114,7 @@ nginx_up 1
 # HELP nginxexporter_build_info Exporter build information
 # TYPE nginxexporter_build_info gauge
 nginxexporter_build_info{gitCommit="a2910f1",version="0.7.0"} 1
-````
+```
 
 6. Пробрасываем порты для prometheus:
 
@@ -2089,49 +2125,49 @@ nginxexporter_build_info{gitCommit="a2910f1",version="0.7.0"} 1
 
 7. Пробрасываем порты для `Grafana`:
 
-`kubectl port-forward service/prometheus-operator-grafana  -n monitoring 8000:80`
+`kubectl port-forward service/prometheus-operator-grafana -n monitoring 8000:80`
 
 8. Строим график для запросов в 1 мин:
 
 ![альт](https://github.com/otus-kuber-2020-04/volkmydj_platform/blob/kubernetes-monitoring/kubernetes-monitoring/grafana.png?raw=true "описание при наведении")
 
-
 kubectl apply -f https://raw.githubusercontent.com/express42/otus-platform-snippets/master/Module-02/Logging/microservices-demo-without-resources.yaml -n microservices-demo
 
-
-
 ## kubernetes-logging
+
 ---
+
 ==Подготовка Kubernetes кластера==
 
 1. Поднимаем кластер с 2 пулами нод и проверяем подключение:
 
 `terraform apply` (ждем примерно 6-7 мин.)
 
-````
+```
 Apply complete! Resources: 4 added, 0 changed, 0 dest
-````
+```
+
 `gcloud container clusters get-credentials my-gke-cluster --region europe-west4-a --project otus-kuber-278507`
 
 `kubectl get nodes`
 
-````
+```
 NAME                                            STATUS   ROLES    AGE     VERSION
 gke-my-gke-cluster-default-pool-5458d676-d28h   Ready    <none>   4m13s   v1.15.11-gke.13
 gke-my-gke-cluster-infra-pool-4afaa6fe-1v9k     Ready    <none>   9m50s   v1.15.11-gke.13
 gke-my-gke-cluster-infra-pool-4afaa6fe-4tg4     Ready    <none>   9m51s   v1.15.11-gke.13
 gke-my-gke-cluster-infra-pool-4afaa6fe-scld     Ready    <none>   9m50s   v1.15.11-gke.13
-````
+```
+
 ### ==Установка hipster-shop==
 
-* Самый простой способ сделать это - применить подготовленный манифест:
+- Самый простой способ сделать это - применить подготовленный манифест:
 
 `kubectl create ns microservices-demo`
 
-
 `kubectl apply -f https://raw.githubusercontent.com/express42/otus-platform-snippets/master/Module-02/Logging/microservices-demo-without-resources.yaml -n microservices-demo`
 
-````
+```
 deployment.apps/emailservice created
 service/emailservice created
 deployment.apps/checkoutservice created
@@ -2156,13 +2192,13 @@ deployment.apps/redis-cart created
 service/redis-cart created
 deployment.apps/adservice created
 service/adservice created
-````
+```
 
-* Проверяем, что все pod развернулись на ноде из default-pool:
+- Проверяем, что все pod развернулись на ноде из default-pool:
 
 `kubectl get pods -n microservices-demo -o wide`
 
-````
+```
 NAME                                     READY   STATUS    RESTARTS   AGE     IP           NODE                                            NOMINATED NODE   READINESS GATES
 adservice-9679d5b56-n498g                1/1     Running   0          2m48s   10.32.0.19   gke-my-gke-cluster-default-pool-5458d676-d28h   <none>           <none>
 cartservice-66b4c7d59-vxrqd              1/1     Running   2          2m49s   10.32.0.14   gke-my-gke-cluster-default-pool-5458d676-d28h   <none>           <none>
@@ -2176,11 +2212,11 @@ productcatalogservice-768b67d968-zm9sf   1/1     Running   0          2m50s   10
 recommendationservice-f45c4979d-hdk88    1/1     Running   0          2m51s   10.32.0.10   gke-my-gke-cluster-default-pool-5458d676-d28h   <none>           <none>
 redis-cart-cfcbcdf6c-59bvp               1/1     Running   0          2m48s   10.32.0.18   gke-my-gke-cluster-default-pool-5458d676-d28h   <none>           <none>
 shippingservice-5d68c4f8d4-8g2bv         1/1     Running   0          2m48s   10.32.0.17   gke-my-gke-cluster-default-pool-5458d676-d28h   <none>           <none>
-````
+```
 
 ### ==Установка EFK стека | Helm charts==
 
-* Рекомендуемый репозиторий с Helm chart для ElasticSearch и Kibana на текущий момент - https://github.com/elastic/helm-charts
+- Рекомендуемый репозиторий с Helm chart для ElasticSearch и Kibana на текущий момент - https://github.com/elastic/helm-charts
 
 Добавим его:
 
@@ -2188,7 +2224,7 @@ shippingservice-5d68c4f8d4-8g2bv         1/1     Running   0          2m48s   10
 
 `helm repo update`
 
-````
+```
 Hang tight while we grab the latest from your chart repositories...
 ...Successfully got an update from the "harbor" chart repository
 ...Successfully got an update from the "nginx-stable" chart repository
@@ -2202,16 +2238,16 @@ Hang tight while we grab the latest from your chart repositories...
 ...Successfully got an update from the "stable" chart repository
 ...Unable to get an update from the "chartmusem" chart repository
 Update Complete. ⎈ Happy Helming!⎈
-````
+```
 
-* Установим нужные нам компоненты, для начала - без какой- либо дополнительной настройки:
+- Установим нужные нам компоненты, для начала - без какой- либо дополнительной настройки:
 
 `kubectl create ns observability`
 
- ElasticSearch \
+ElasticSearch \
 `helm upgrade --install elasticsearch elastic/elasticsearch --namespace observability`
 
-````
+```
 Release "elasticsearch" does not exist. Installing it now.
 NAME: elasticsearch
 LAST DEPLOYED: Wed Jun 10 17:18:05 2020
@@ -2223,10 +2259,12 @@ NOTES:
   $ kubectl get pods --namespace=observability -l app=elasticsearch-master -w
 2. Test cluster health using Helm test.
   $ helm test elasticsearch --cleanup
-````
+```
+
 Kibana \
 `helm upgrade --install kibana elastic/kibana --namespace observability`
-````
+
+```
 Release "kibana" does not exist. Installing it now.
 NAME: kibana
 LAST DEPLOYED: Wed Jun 10 17:19:06 2020
@@ -2234,12 +2272,12 @@ NAMESPACE: observability
 STATUS: deployed
 REVISION: 1
 TEST SUITE: None
-````
+```
 
 Fluent Bit \
 `helm upgrade --install fluent-bit stable/fluent-bit --namespace observability`
 
-````
+```
 Release "fluent-bit" does not exist. Installing it now.
 NAME: fluent-bit
 LAST DEPLOYED: Wed Jun 10 17:21:11 2020
@@ -2250,11 +2288,11 @@ NOTES:
 fluent-bit is now running.
 
 It will forward all container logs to the svc named fluentd on port: 24284
-````
+```
 
-* Создаем в директории kubernetes-logging файл `elasticsearch.values.yaml`, будем указывать в этом файле нужные нам values.
+- Создаем в директории kubernetes-logging файл `elasticsearch.values.yaml`, будем указывать в этом файле нужные нам values.
 
-* Разрешим ElasticSearch запускаться на данных нодах:
+- Разрешим ElasticSearch запускаться на данных нодах:
 
 ```yaml
 tolerations:
@@ -2262,8 +2300,9 @@ tolerations:
       operator: Equal
       value: infra
       effect: NoSchedule
-````
-* Обновляем установку:
+```
+
+- Обновляем установку:
 
 `helm upgrade --install elasticsearch elastic/elasticsearch --namespace observability -f elasticsearch.values.yaml`
 
@@ -2274,9 +2313,9 @@ tolerations:
 ```yaml
 nodeSelector:
   cloud.google.com/gke-nodepool: infra-pool
-````
+```
 
-* Обновляем установку:
+- Обновляем установку:
 
 `helm upgrade --install elasticsearch elastic/elasticsearch --namespace observability -f elasticsearch.values.yaml`
 
@@ -2284,21 +2323,20 @@ nodeSelector:
 
 `kubectl get pods -n observability -o wide -l chart=elasticsearch`
 
-
-````
+```
 NAME                     READY   STATUS    RESTARTS   AGE    IP           NODE                                            NOMINATED NODE   READINESS GATES
 elasticsearch-master-0   1/1     Running   0          14m    10.32.0.20   gke-my-gke-cluster-default-pool-5458d676-d28h   <none>           <none>
 elasticsearch-master-1   0/1     Running   0          50s    10.32.2.3    gke-my-gke-cluster-infra-pool-4afaa6fe-scld     <none>           <none>
 elasticsearch-master-2   1/1     Running   0          2m2s   10.32.3.3    gke-my-gke-cluster-infra-pool-4afaa6fe-1v9k     <none>           <none>
-````
+```
 
 ==Установка nginx-ingress==
 
-* Устанавливаем nginx-ingress. Разворачиваем три реплики controller, по одной, на каждую ноду из infra-pool:
+- Устанавливаем nginx-ingress. Разворачиваем три реплики controller, по одной, на каждую ноду из infra-pool:
 
 `ingress.values.yaml`:
 
-````yaml
+```yaml
 controller:
   replicaCount: 3
 
@@ -2323,12 +2361,13 @@ controller:
 
   nodeSelector:
     cloud.google.com/gke-nodepool: infra-pool
-````
+```
+
 Вкатываем:
 
 `helm upgrade --install nginx-ingress stable/nginx-ingress --namespace=nginx-ingress --version=1.39.0 -f nginx-ingress.values.yaml --create-namespace`
 
-````
+```
 Release "nginx-ingress" does not exist. Installing it now.
 NAME: nginx-ingress
 LAST DEPLOYED: Wed Jun 10 17:39:27 2020
@@ -2376,25 +2415,26 @@ If TLS is enabled for the Ingress, a Secret containing the certificate and key m
     tls.crt: <base64 encoded cert>
     tls.key: <base64 encoded key>
   type: kubernetes.io/tls
-````
+```
 
 ### ==Установка EFK стека | Kibana==
 
-* Создаем файл kibana.values.yaml в директории kubernetes-logging и добавляем туда конфигурацию для создания ingress:
+- Создаем файл kibana.values.yaml в директории kubernetes-logging и добавляем туда конфигурацию для создания ingress:
 
-````yaml
+```yaml
 ingress:
   enabled: true
   annotations: { kubernetes.io/ingress.class: nginx }
   path: /
   hosts:
     - kibana.34.90.81.164.xip.io
-````
+```
+
 Обновляем релиз:
 
 `helm upgrade --install kibana elastic/kibana --namespace observability -f kibana.values.yaml`
 
-````
+```
 Release "kibana" has been upgraded. Happy Helming!
 NAME: kibana
 LAST DEPLOYED: Wed Jun 10 17:45:34 2020
@@ -2402,34 +2442,35 @@ NAMESPACE: observability
 STATUS: deployed
 REVISION: 2
 TEST SUITE: None
-````
+```
 
-* Попробуем создать `index pattern`, и увидим, что в ElasticSearch пока что не обнаружено никаких данных:
+- Попробуем создать `index pattern`, и увидим, что в ElasticSearch пока что не обнаружено никаких данных:
 
 ![alt text](screenshots/kibana-1.png "Описание будет тут")​
 
-* Посмотрим в логи решения, которое отвечает за отправку логов (Fluent Bit) и увидим следующие строки:
+- Посмотрим в логи решения, которое отвечает за отправку логов (Fluent Bit) и увидим следующие строки:
 
 `kubectl logs fluent-bit-xnknh -n observability --tail 2`
 
-````
+```
 [2020/06/10 14:58:19] [error] [out_fw] no upstream connections available
 [2020/06/10 14:58:19] [ warn] [engine] failed to flush chunk '1-1591798878.183008011.flb', retry in 1090 seconds: task_id=14, input=tail.0 > output=forward.0
-````
+```
 
-* Попробуем исправить проблему. Создадим файл fluent- bit.values.yaml и добавим туда:
+- Попробуем исправить проблему. Создадим файл fluent- bit.values.yaml и добавим туда:
 
-````yaml
+```yaml
 backend:
   type: es
   es:
     host: elasticsearch-master
-````
+```
+
 Обновляем релиз:
 
 `helm upgrade --install fluent-bit stable/fluent-bit --namespace observability -f fluent-bit.values.yaml`
 
-````
+```
 Release "fluent-bit" has been upgraded. Happy Helming!
 NAME: fluent-bit
 LAST DEPLOYED: Wed Jun 10 18:30:57 2020
@@ -2438,12 +2479,11 @@ STATUS: deployed
 REVISION: 2
 NOTES:
 fluent-bit is now running.
-````
+```
 
 Попробуем повторно создать index pattern. В этот раз ситуация изменилась, и какие-то индексы в ElasticSearch уже есть:
 
-![alt text](screenshots/kibana-2.png )​
-
+![alt text](screenshots/kibana-2.png)​
 
 После установки можно заметить, что в ElasticSearch попадают
 далеко не все логи нашего приложения.
@@ -2453,14 +2493,14 @@ fluent-bit is now running.
 
 [issue]: https://github.com/fluent/fluent-bit/issues/628
 
-* Воспользуемся фильтром [Modify],
-который позволит удалить из логов "лишние" ключи:
+- Воспользуемся фильтром [Modify],
+  который позволит удалить из логов "лишние" ключи:
 
-[Modify]: https://docs.fluentbit.io/manual/pipeline/filters/modify
+[modify]: https://docs.fluentbit.io/manual/pipeline/filters/modify
 
 `fluent-bit.values.yaml`:
 
-````yaml
+```yaml
 backend:
   type: es
   es:
@@ -2476,13 +2516,13 @@ rawConfig: |
       Match    *
       Remove   time
       Remove   @timestamp
-`````
+```
 
 Обновляем релиз:
 
 `helm upgrade --install fluent-bit stable/fluent-bit --namespace observability -f fluent-bit.values.yaml`
 
-````
+```
 Release "fluent-bit" has been upgraded. Happy Helming!
 NAME: fluent-bit
 LAST DEPLOYED: Wed Jun 10 18:48:07 2020
@@ -2491,46 +2531,44 @@ STATUS: deployed
 REVISION: 4
 NOTES:
 fluent-bit is now running.
-````
+```
 
 #### Задание со ⭐
 
 Попробуем другое решение проблемы.
 
-* Удалим строки в секции:
+- Удалим строки в секции:
 
-````
+```
   [FILTER]
       Name     modify
       Match    *
       Remove   time
       Remove   @timestamp
-`````
+```
 
-* Добавим префикс к полям из json:
+- Добавим префикс к полям из json:
 
-````
+```
 filter:
   mergeLogKey: "app"
-````
+```
 
 Обновляем релиз:
 
 `helm upgrade --install fluent-bit stable/fluent-bit --namespace observability -f fluent-bit.values.yaml`
 
-
 ### ==Мониторинг ElasticSearch==
 
+- Для мониторинга ElasticSearch будем использовать следующий [Prometheus exporter].
 
-* Для мониторинга ElasticSearch будем использовать следующий [Prometheus exporter].
-
-[Prometheus exporter]: https://github.com/justwatchcom/elasticsearch_exporter
+[prometheus exporter]: https://github.com/justwatchcom/elasticsearch_exporter
 
 Устанавливаем его (см `prometheus.values.yaml`):
 
-`helm upgrade --install  prometheus-operator stable/prometheus-operator -n observability --create-namespace -f prometheus.values.yaml`
+`helm upgrade --install prometheus-operator stable/prometheus-operator -n observability --create-namespace -f prometheus.values.yaml`
 
-````
+```
 NAME: prometheus-operator
 LAST DEPLOYED: Wed Jun 10 19:05:41 2020
 NAMESPACE: observability
@@ -2542,13 +2580,13 @@ The Prometheus Operator has been installed. Check its status by running:
 
 Visit https://github.com/coreos/prometheus-operator for instructions on how
 to create & configure Alertmanager and Prometheus instances using the Operator.
-````
+```
 
-* Устанавливаем exporter:
+- Устанавливаем exporter:
 
 `helm upgrade --install elasticsearch-exporter stable/elasticsearch-exporter --set es.uri=http://elasticsearch-master:9200 --set serviceMonitor.enabled=true --namespace=observability`
 
-````
+```
 Release "elasticsearch-exporter" does not exist. Installing it now.
 NAME: elasticsearch-exporter
 LAST DEPLOYED: Wed Jun 10 19:10:29 2020
@@ -2561,34 +2599,35 @@ NOTES:
   export POD_NAME=$(kubectl get pods --namespace observability -l "app=elasticsearch-exporter" -o jsonpath="{.items[0].metadata.name}")
   echo "Visit http://127.0.0.1:9108/metrics to use your application"
   kubectl port-forward $POD_NAME 9108:9108 --namespace observability
-````
+```
 
-* Устанавливаем один из популярных дашбордов:
+- Устанавливаем один из популярных дашбордов:
 
-![alt text](screenshots/grafana-1.png )​
+![alt text](screenshots/grafana-1.png)​
 
-* Сделаем drain одной из нод infra-pool
+- Сделаем drain одной из нод infra-pool
 
 `kubectl drain gke-my-gke-cluster-infra-pool-4afaa6fe-1v9k --ignore-daemonsets`
 
-````
+```
 node/gke-my-gke-cluster-infra-pool-4afaa6fe-1v9k cordoned
 WARNING: ignoring DaemonSet-managed Pods: observability/prometheus-operator-prometheus-node-exporter-srn5p
 evicting pod "nginx-ingress-controller-75b44fddff-tcsqk"
 evicting pod "elasticsearch-master-2"
 pod/elasticsearch-master-2 evicted
-````
+```
+
 Статус Cluster Health остался зеленым, но количество нод в кластере уменьшилось до двух штук. При этом, кластер сохранил полную работоспособность:
 
-![alt text](screenshots/grafana-2.png )​
+![alt text](screenshots/grafana-2.png)​
 
 Попробуем сделать drain второй ноды из infra-pool, и увидим что [PDB] не дает этого сделать:
 
-[PDB]: https://kubernetes.io/docs/tasks/run-application/configure-pdb/
+[pdb]: https://kubernetes.io/docs/tasks/run-application/configure-pdb/
 
 `kubectl drain gke-my-gke-cluster-infra-pool-4afaa6fe-4tg4 --ignore-daemonsets`
 
-````
+```
 WARNING: ignoring DaemonSet-managed Pods: observability/prometheus-operator-prometheus-node-exporter-rpgnh
 evicting pod "elasticsearch-master-0"
 evicting pod "nginx-ingress-controller-75b44fddff-qp44k"
@@ -2598,42 +2637,44 @@ evicting pod "elasticsearch-master-0"
 error when evicting pod "elasticsearch-master-0" (will retry after 5s): Cannot evict pod as it would violate the pod's disruption budget.
 evicting pod "elasticsearch-master-0"
 error when evicting pod "elasticsearch-master-0" (will retry after 5s): Cannot evict pod as it would violate the pod's disruption budget.
-````
+```
+
 Удалим под той ноды, которую хотели удалить:
 
 `kubectl delete pods elasticsearch-master-0 -n observability`
 
 Оставшийся под перешел в статус Pending:
 
-````
+```
 observability        elasticsearch-master-2     0/1     Pending   0          36m
-````
-
+```
 
 ## ==EFK | nginx ingress==
 
 Попробуем найти в Kibana логи nginx-ingress (например, полнотекстовым поиском по слову nginx) и обнаружим, что они отсутствуют.
 
-* Разрешим запуск fluent-bit на infra нодах в `fluent-bit.values.yaml`:
+- Разрешим запуск fluent-bit на infra нодах в `fluent-bit.values.yaml`:
 
-````yaml
+```yaml
 tolerations:
   - key: node-role
     operator: Equal
     value: infra
     effect: NoSchedule
-````
+```
+
 Обновляем релиз:
 
 `helm upgrade --install fluent-bit stable/fluent-bit --namespace observability -f fluent-bit.values.yaml`
 
-* После появления логов nginx у нас возникнет следующая проблема:
+- После появления логов nginx у нас возникнет следующая проблема:
 
-![alt text](screenshots/kibana-3.png )​
+![alt text](screenshots/kibana-3.png)​
 
 Сейчас лог представляет из себя строку, с которой сложно
 работать.
 Мы можем использовать полнотекстовый поиск, но лишены возможности:
+
 - Задействовать функции KQL
 - Полноценно проводить аналитику
 - Создавать Dashboard по логам
@@ -2647,11 +2688,10 @@ tolerations:
 
 [log-format-upstream]: https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/configmap/#log-format-escape-json
 
-
 ```yaml
-  config:
-    log-format-escape-json: "true"
-    log-format-upstream: '{"remote_addr": "$proxy_protocol_addr", "x-forward-for": "$proxy_add_x_forwarded_for", "request_id": "$req_id", "remote_user": "$remote_user", "bytes_sent": $bytes_sent, "request_time": $request_time, "status":$status, "vhost": "$host", "request_proto": "$server_protocol", "path": "$uri", "request_query": "$args", "request_length": $request_length, "duration": $request_time,"method": "$request_method", "http_referrer": "$http_referer", "http_user_agent": "$http_user_agent" }'
+config:
+  log-format-escape-json: "true"
+  log-format-upstream: '{"remote_addr": "$proxy_protocol_addr", "x-forward-for": "$proxy_add_x_forwarded_for", "request_id": "$req_id", "remote_user": "$remote_user", "bytes_sent": $bytes_sent, "request_time": $request_time, "status":$status, "vhost": "$host", "request_proto": "$server_protocol", "path": "$uri", "request_query": "$args", "request_length": $request_length, "duration": $request_time,"method": "$request_method", "http_referrer": "$http_referer", "http_user_agent": "$http_user_agent" }'
 ```
 
 Обновим релиз:
@@ -2660,13 +2700,14 @@ tolerations:
 
 Проверяем:
 
-`kubectl get  configmaps nginx-ingress-controller -n nginx-ingress -o yaml`
+`kubectl get configmaps nginx-ingress-controller -n nginx-ingress -o yaml`
 
-````yaml
+```yaml
 apiVersion: v1
 data:
   log-format-escape-json: "true"
-  log-format-upstream: '{"remote_addr": "$proxy_protocol_addr", "x-forward-for": "$proxy_add_x_forwarded_for",
+  log-format-upstream:
+    '{"remote_addr": "$proxy_protocol_addr", "x-forward-for": "$proxy_add_x_forwarded_for",
     "request_id": "$req_id", "remote_user": "$remote_user", "bytes_sent": $bytes_sent,
     "request_time": $request_time, "status":$status, "vhost": "$host", "request_proto":
     "$server_protocol", "path": "$uri", "request_query": "$args", "request_length":
@@ -2690,20 +2731,20 @@ metadata:
   resourceVersion: "65309"
   selfLink: /api/v1/namespaces/nginx-ingress/configmaps/nginx-ingress-controller
   uid: 1868ce3e-5617-4e3a-b163-dac1829f305b
-````
+```
 
 Формат логов изменился:
 
-````
+```
 "_source": {
   x-forward-for": "10.128.0.35",
   "request_id": "bfcee33afe75c099f7887d7e70b1ab00",
   "bytes_sent": 19087,
   "request_time": 1.168,
   "status": 200,
-````
+```
 
-* Создаем новую визуализацию с типом TSVB:
+- Создаем новую визуализацию с типом TSVB:
 
 Для начала, создадим визуализацию, показывающую общее количество запросов к nginx-ingress. Для этого нам понадобится применить следующий KQL фильтр:
 
@@ -2711,29 +2752,28 @@ metadata:
 
 Добавляем данный фильтр в Panel options нашей визуализации.
 
-* Cоздаем визуализации для отображения запросов к nginx-ingress со статусами:
+- Cоздаем визуализации для отображения запросов к nginx-ingress со статусами:
 
- - 200-299
- - 300-399
- - 400-499
- - 500+
+* 200-299
+* 300-399
+* 400-499
+* 500+
 
 Создаем Dashboard и добавляем на него свои визуализации.
 
 Экспортируем получившиеся визуализации и Dashboard,добавляем файл `export.ndjson`.
 
-
 ## ==Loki==
 
-* Установливаме Loki в namespace observability
-* Модифицируем конфигурацию prometheus-operator таким образом, чтобы datasource Loki создавался сразу после установки оператора
-* Включаем метрики для nginx-ingress
+- Установливаме Loki в namespace observability
+- Модифицируем конфигурацию prometheus-operator таким образом, чтобы datasource Loki создавался сразу после установки оператора
+- Включаем метрики для nginx-ingress
 
 Обновляем релизы:
 
 `helm upgrade --install nginx-ingress stable/nginx-ingress --namespace=nginx-ingress --version=1.39.0 -f nginx-ingress.values.yaml --create-namespace`
 
-`helm upgrade --install  prometheus-operator stable/prometheus-operator -n observability --create-namespace -f prometheus.values.yaml`
+`helm upgrade --install prometheus-operator stable/prometheus-operator -n observability --create-namespace -f prometheus.values.yaml`
 
 Устанавливаем Loki:
 
@@ -2741,13 +2781,13 @@ metadata:
 
 `helm repo update`
 
-`helm upgrade --install loki --namespace=observability loki/loki-stack  -f loki.values.yaml`
+`helm upgrade --install loki --namespace=observability loki/loki-stack -f loki.values.yaml`
 
 Проверяем:
 
 `kubectl get pods -n observability`
 
-````
+```
 NAME                                                     READY   STATUS    RESTARTS   AGE
 alertmanager-prometheus-operator-alertmanager-0          2/2     Running   0          115m
 elasticsearch-exporter-7787cf7bf4-z7fmd                  1/1     Running   0          111m
@@ -2772,10 +2812,9 @@ prometheus-operator-prometheus-node-exporter-rpgnh       1/1     Running   0    
 prometheus-operator-prometheus-node-exporter-srn5p       1/1     Running   0          115m
 prometheus-operator-prometheus-node-exporter-w7z9r       1/1     Running   0          115m
 prometheus-prometheus-operator-prometheus-0              3/3     Running   1          115m
-````
+```
 
-
-````
+```
 Release "loki" does not exist. Installing it now.
 NAME: loki
 LAST DEPLOYED: Wed Jun 10 21:01:21 2020
@@ -2786,7 +2825,7 @@ NOTES:
 The Loki stack has been deployed to your cluster. Loki can now be added as a datasource in Grafana.
 
 See http://docs.grafana.org/features/datasources/loki/ for more detail.
-````
+```
 
 ## ==Loki | nginx ingress==
 
@@ -2794,25 +2833,24 @@ See http://docs.grafana.org/features/datasources/loki/ for more detail.
 
 Loki, аналогично ElasticSearch умеет разбирать JSON лог по ключам, но, к сожалению, фильтрация по данным ключам на текущий момент не работает.
 
-
 ## ==Loki | Визуализация==
 
-* Создаем Dashboard, на котором одновременно выведем
-метрики nginx-ingress и его логи:
+- Создаем Dashboard, на котором одновременно выведем
+  метрики nginx-ingress и его логи:
 
 `nginx.json`
 
-* Добавим панель с логами и укажем для нее следующие настройки Query:
+- Добавим панель с логами и укажем для нее следующие настройки Query:
 
 `{app="nginx-ingress"}`
 
-* Добавим в Dashboard дополнительные панели с метриками, отслеживание которых может быть важным.
+- Добавим в Dashboard дополнительные панели с метриками, отслеживание которых может быть важным.
 
-* Выгрузим из Grafana JSON с финальным Dashboard и поместим его в файл kubernetes-logging/nginx-ingress.json
+- Выгрузим из Grafana JSON с финальным Dashboard и поместим его в файл kubernetes-logging/nginx-ingress.json
 
 ## ==Event logging | k8s-event-logger==
 
-* Установим еще одну небольшую, но очень полезную [утилиту], позволяющую получить и сохранить event'ы Kubernetes в выбранном решении для логирования:
+- Установим еще одну небольшую, но очень полезную [утилиту], позволяющую получить и сохранить event'ы Kubernetes в выбранном решении для логирования:
 
 [утилиту]: https://github.com/max-rocket-internet/k8s-event-logger
 
@@ -2820,7 +2858,7 @@ Loki, аналогично ElasticSearch умеет разбирать JSON ло
 
 `helm upgrade --install event-logger -n observability chart/`
 
-````
+```
 Release "event-logger" does not exist. Installing it now.
 NAME: event-logger
 LAST DEPLOYED: Wed Jun 10 21:23:36 2020
@@ -2832,30 +2870,28 @@ NOTES:
 To verify that the k8s-event-logger pod has started, run:
 
   kubectl --namespace=observability get pods -l "app.kubernetes.io/name=k8s-event-logger,app.kubernetes.io/instance=event-logger"
-````
-
+```
 
 ## kubbernetes-vault
 
 ### ==Инсталляция hashicorp vault HA в k8s==
 
-+ Поднимаем кластер (минимум 3 ноды):
+- Поднимаем кластер (минимум 3 ноды):
 
 `terraform apply`
 
-+ Инициализируем кластер:
+- Инициализируем кластер:
 
 `gcloud container clusters get-credentials my-gke-cluster --region europe-west4-a --project otus-kuber-278507`
 
-+ Добавим репозиторий
+- Добавим репозиторий
 
-````
+```
 helm repo add hashicorp https://helm.releases.hashicorp.com
 helm repo update
-````
+```
 
-
-+ Установим consul:
+- Установим consul:
 
 `helm upgrade --install consul hashicorp/consul`
 
@@ -2869,8 +2905,7 @@ enabled: true ...
 ui:
 enabled: true
   serviceType: "ClusterIP"
-````
-
+```
 
 ### ==Установим vault
 
@@ -2878,7 +2913,7 @@ enabled: true
 
 `get po `
 
-````
+```
 NAME                                   READY   STATUS    RESTARTS   AGE
 consul-consul-rz6mv                    1/1     Running   0          4m19s
 consul-consul-s7ln5                    1/1     Running   0          4m19s
@@ -2890,12 +2925,13 @@ vault-0                                0/1     Running   0          3m49s
 vault-1                                0/1     Running   0          3m49s
 vault-2                                0/1     Running   0          3m49s
 vault-agent-injector-cc48fcc8c-tvpwv   1/1     Running   0          3m49s
-````
-+ Проверим статус:
+```
+
+- Проверим статус:
 
 `helm status vault `
 
-````
+```
 NAME: vault
 LAST DEPLOYED: Mon Jun 29 23:48:16 2020
 NAMESPACE: ame
@@ -2915,13 +2951,13 @@ Your release is named vault. To learn more about the release, try:
 
   $ helm status vault
   $ helm get vault
-````
+```
 
-+ Проведем инициализацию черерз любой под vault'а kubectl:
+- Проведем инициализацию черерз любой под vault'а kubectl:
 
-`kubectl exec -it vault-0  -- vault operator init --key-shares=1 --key-threshold=1`
+`kubectl exec -it vault-0 -- vault operator init --key-shares=1 --key-threshold=1`
 
-````
+```
 Unseal Key 1: vQeoXTQxtHjZgXoBbDyomf+GCCwFNfYwTgjWil1JHmo=
 
 Initial Root Token: s.vpKIYWXsrGKl6L69oKQxGEsM
@@ -2936,13 +2972,13 @@ reconstruct the master key, Vault will remain permanently sealed!
 
 It is possible to generate new unseal keys, provided you have a quorum of
 existing unseal keys shares. See "vault operator rekey" for more information.
-````
+```
 
 ## ==Проверим состояние vault:
 
 `kubectl exec -it vault-0 -- vault status`
 
-````
+```
 Key                Value
 ---                -----
 Seal Type          shamir
@@ -2955,19 +2991,21 @@ Unseal Nonce       n/a
 Version            1.4.2
 HA Enabled         true
 command terminated with exit code 2
-````
+```
 
 ## ==Распечатаем vault:
 
-`kubectl exec -it vault-0  env | grep VAULT_ADDR`
+`kubectl exec -it vault-0 env | grep VAULT_ADDR`
 
-````
+```
 VAULT_ADDR=http://127.0.0.1:8200
-````
-+ Распечатаем каждый pod:
+```
 
-kubectl exec -it vault-0  -- vault operator unseal 'vQeoXTQxtHjZgXoBbDyomf+GCCwFNfYwTgjWil1JHmo='
-````
+- Распечатаем каждый pod:
+
+kubectl exec -it vault-0 -- vault operator unseal 'vQeoXTQxtHjZgXoBbDyomf+GCCwFNfYwTgjWil1JHmo='
+
+```
 Key             Value
 ---             -----
 Seal Type       shamir
@@ -2984,21 +3022,25 @@ HA Mode         active
 
 `kubectl exec -it vault-1 -n ame -- vault operator unseal 'vQeoXTQxtHjZgXoBbDyomf+GCCwFNfYwTgjWil1JHmo='`
 
-````
-Key                    Value
----                    -----
-Seal Type              shamir
-Initialized            true
-Sealed                 false
-Total Shares           1
-Threshold              1
-Version                1.4.2
-Cluster Name           vault-cluster-a3619f9c
-Cluster ID             ad16dd4e-bc92-64f5-0735-2f2e0b203ce3
-HA Enabled             true
-HA Cluster             https://vault-0.vault-internal:8201
-HA Mode                standby
-````
+```
+
+Key Value
+
+---
+
+Seal Type shamir
+Initialized true
+Sealed false
+Total Shares 1
+Threshold 1
+Version 1.4.2
+Cluster Name vault-cluster-a3619f9c
+Cluster ID ad16dd4e-bc92-64f5-0735-2f2e0b203ce3
+HA Enabled true
+HA Cluster https://vault-0.vault-internal:8201
+HA Mode standby
+
+```
 
 
 > kubectl exec -it vault-0 -- vault operator unseal
@@ -3017,11 +3059,11 @@ HA Enabled             true
 HA Cluster             https://vault-1.vault-internal:8201
 HA Mode                standby
 Active Node Address    http://10.123.1.7:8200
-````
+```
+
 `kubectl exec -it vault-2 -n ame -- vault operator unseal 'vQeoXTQxtHjZgXoBbDyomf+GCCwFNfYwTgjWil1JHmo='`
 
-
-````
+```
 Key                    Value
 ---                    -----
 Seal Type              shamir
@@ -3036,10 +3078,11 @@ HA Enabled             true
 HA Cluster             https://vault-0.vault-internal:8201
 HA Mode                standby
 Active Node Address    http://10.0.1.11:8200
-````
-+ Выполним `kubectl exec -it vault-0 -n ame -- vault auth list`.
+```
 
-+ Получим ошибку:
+- Выполним `kubectl exec -it vault-0 -n ame -- vault auth list`.
+
+- Получим ошибку:
 
 ```
 Error listing enabled authentications: Error making API request.
@@ -3049,12 +3092,13 @@ Code: 400. Errors:
 
 * missing client token
 command terminated with exit code 2
-````
+```
+
 ## ==Залогинимся в vault:
 
 `kubectl exec -it vault-0 -- vault login`
 
-````
+```
 Token (will be hidden):
 Success! You are now authenticated. The token information displayed below
 is already stored in the token helper. You do NOT need to run "vault login"
@@ -3069,90 +3113,91 @@ token_renewable      false
 token_policies       ["root"]
 identity_policies    []
 policies             ["root"]
-````
+```
 
-+ Повторно запросим список авторизаций:
+- Повторно запросим список авторизаций:
 
-`kubectl exec -it vault-0  -- vault auth list`
+`kubectl exec -it vault-0 -- vault auth list`
 
-````
+```
 Path      Type     Accessor               Description
 ----      ----     --------               -----------
 token/    token    auth_token_8652be1a    token based credentials
-````
+```
+
 ## ==Заведем секреты:
 
-`kubectl exec -it vault-0  -- vault secrets enable --path=otus kv`
+`kubectl exec -it vault-0 -- vault secrets enable --path=otus kv`
 
-````
+```
 Success! Enabled the kv secrets engine at: otus/
-````
-`kubectl exec -it vault-0  -- vault secrets list --detailed`
+```
 
-````
+`kubectl exec -it vault-0 -- vault secrets list --detailed`
+
+```
 Path          Plugin       Accessor              Default TTL    Max TTL    Force No Cache    Replication    Seal Wrap    External Entropy Access    Options    Description                                                UUID
 ----          ------       --------              -----------    -------    --------------    -----------    ---------    -----------------------    -------    -----------                                                ----
 cubbyhole/    cubbyhole    cubbyhole_a4c98e6d    n/a            n/a        false             local          false        false                      map[]      per-token private secret storage                           d09e0fd9-ca83-f4a4-5f18-6f9b6325e2ef
 identity/     identity     identity_bc533430     system         system     false             replicated     false        false                      map[]      identity store                                             bc06bf2d-6427-13ad-221b-e989b363d1d1
 otus/         kv           kv_abd03cf8           system         system     false             replicated     false        false                      map[]      n/a                                                        919f3a49-ecaa-a208-ff02-5df1f4b6c012
 sys/          system       system_6d20c580       n/a            n/a        false             replicated     false        false                      map[]      system endpoints used for control, policy and debugging    ab82236b-a259-29d6-7b83-8643fce2126e
-````
+```
 
-`kubectl exec -it vault-0  -- vault kv put otus/otus-ro/config username='otus' password='asajkjkahs'`
+`kubectl exec -it vault-0 -- vault kv put otus/otus-ro/config username='otus' password='asajkjkahs'`
 
-
-````
+```
 Success! Data written to: otus/otus-ro/config
-````
+```
 
-`exec -it vault-0  -- vault kv put otus/otus-rw/config username='otus' password='asajkjkahs'`
+`exec -it vault-0 -- vault kv put otus/otus-rw/config username='otus' password='asajkjkahs'`
 
-````
+```
 Success! Data written to: otus/otus-rw/config
-````
+```
 
-`kubectl exec -it vault-0  -- vault read otus/otus-ro/config`
+`kubectl exec -it vault-0 -- vault read otus/otus-ro/config`
 
-````
+```
 Key                 Value
 ---                 -----
 refresh_interval    768h
 password            asajkjkahs
 username            otus
-````
+```
 
-`kubectl exec -it vault-0  -- vault kv get otus/otus-rw/config`
+`kubectl exec -it vault-0 -- vault kv get otus/otus-rw/config`
 
-````
+```
 ====== Data ======
 Key         Value
 ---         -----
 password    asajkjkahs
 username    otus
-````
-## ==Включим авторизацию черерз k8s:
+```
 
+## ==Включим авторизацию черерз k8s:
 
 `kubectl exec -it vault-0 -- vault auth enable kubernetes`
 
-````
+```
 Success! Enabled kubernetes auth method at: kubernetes/
-````
+```
 
+`kubectl exec -it vault-0 -- vault auth list`
 
-`kubectl exec -it vault-0  -- vault auth list`
-
-````
+```
 Path           Type          Accessor                    Description
 ----           ----          --------                    -----------
 kubernetes/    kubernetes    auth_kubernetes_17d55492    n/a
 token/         token         auth_token_e50bea17         token based credentials
-````
+```
+
 ## ==Создадим yaml для ClusterRoleBinding:
 
 `vault-auth-service-account.yml`
 
-````yaml
+```yaml
 apiVersion: rbac.authorization.k8s.io/v1beta1
 kind: ClusterRoleBinding
 metadata:
@@ -3166,77 +3211,82 @@ subjects:
   - kind: ServiceAccount
     name: vault-auth
     namespace: default
-````
+```
+
 ## ==Создадим Service Account vault-auth и применим ClusterRoleBinding:
 
 `kubectl create serviceaccount vault-auth`
 
-````
+```
 serviceaccount/vault-auth created
-`````
+```
+
 `kubectl apply -f vault-auth-service-account.yml`
 
-````
+```
 clusterrolebinding.rbac.authorization.k8s.io/role-tokenreview-binding created
-````
+```
 
 ## ==Подготовим переменные для записи в конфиг кубер авторизации:
 
-````
+```
 export VAULT_SA_NAME=$(kubectl get sa vault-auth -o jsonpath="{.secrets[*]['name']}")
 export SA_JWT_TOKEN=$(kubectl get secret $VAULT_SA_NAME -o jsonpath="{.data.token}" | base64 --decode; echo)
 export SA_CA_CRT=$(kubectl get secret $VAULT_SA_NAME -o jsonpath="{.data['ca\.crt']}" | base64 --decode; echo)
 export K8S_HOST=$(more ~/.kube/config | grep server |awk '/http/ {print $NF}')
-````
+```
+
 ## ==Запишем конфиг в vault:
 
-````
+```
 kubectl exec -it vault-0  -- vault write auth/kubernetes/config \
 token_reviewer_jwt="$SA_JWT_TOKEN" \
 kubernetes_host="$K8S_HOST" \
 kubernetes_ca_cert="$SA_CA_CRT"
 Success! Data written to: auth/kubernetes/config
-````
+```
 
 ## ==Создадим файл политики:
 
 `otus-policy.hcl`
 
-````json
+```json
 path "otus/otus-ro/*" {
   capabilities = ["read", "list",]
 }
 path "otus/otus-rw/*" {
   capabilities = ["read", "create", "list",]
 }
-````
+```
 
 ## ==Создадим политку и роль в vault:
 
-`kubectl cp otus-policy.hcl  vault-0:/home/vault`
+`kubectl cp otus-policy.hcl vault-0:/home/vault`
 
-`kubectl exec -it vault-0  -- vault policy write otus-policy /home/vault/otus-policy.hcl`
+`kubectl exec -it vault-0 -- vault policy write otus-policy /home/vault/otus-policy.hcl`
 
-````
+```
 kubectl exec -it vault-0  -- vault policy write otus-policy /home/vault/otus-policy.hcl
-````
+```
 
-````
+```
 kubectl exec -it vault-0 -- vault write auth/kubernetes/role/otus \
 bound_service_account_names=vault-auth \
 bound_service_account_namespaces=default policies=otus-policy ttl=24h
-````
-````
+```
+
+```
 Success! Data written to: auth/kubernetes/role/otus
-````
+```
 
 ## =Создадим роль и политику
 
-````
+```
 kubectl exec -it vault-0 -- vault write auth/kubernetes/config \ token_reviewer_jwt="$SA_JWT_TOKEN" \
 kubernetes_host="$K8S_HOST" \
 kubernetes_ca_cert="$SA_CA_CRT"
-````
+```
+
 `Success! Data written to: auth/kubernetes/config`
 
 ```hcl
@@ -3246,25 +3296,25 @@ path "otus/otus-ro/*" {
 path "otus/otus-rw/*" {
   capabilities = ["read", "create", "list"]
 }
-````
+```
 
-````
+```
 > kubectl exec -it vault-0 -- vault policy write otus-policy /tmp/otus-policy.hcl
 Success! Uploaded policy: otus-policy
-````
+```
 
 ## Проверяем как работает авторизация
 
- - Создадим под с привязанным сервис аккоунтом и установим туда curl и jq
+- Создадим под с привязанным сервис аккоунтом и установим туда curl и jq
 
-````
+```
 kubectl run --generator=run-pod/v1 tmp --rm -i --tty --serviceaccount=vault-auth --image alpine:3.7
 apk add curl jq
-````
+```
 
 - Логинимся и получаем клиентский токен:
 
-````
+```
 curl --request POST --data '{"jwt": "'$KUBE_TOKEN'", "role": "otus"}' $VAULT_ADDR/v1/auth/kubernetes/login | jq
 {
   "request_id": "2af65405-1324-9b34-cd1a-77f2d8e9badb",
@@ -3301,14 +3351,14 @@ curl --request POST --data '{"jwt": "'$KUBE_TOKEN'", "role": "otus"}' $VAULT_ADD
 }
 
 TOKEN=$(curl -k -s --request POST --data '{"jwt": "'$KUBE_TOKEN'", "role": "otus"}' $VAULT_ADDR/v1/auth/kubernetes/login | jq '.auth.client_token' | awk -F\" '{print $2}')
-````
+```
 
 ## ==Прочитаем записанные ранее секреты и попробуем их обновить
 
 - Используем свой клиентский токен.
 - Проверим чтение
 
-````
+```
 curl --header "X-Vault-Token:$TOKEN" $VAULT_ADDR/v1/otus/otus-ro/config | jq
 {
   "request_id": "3a29647c-8e75-4d56-7ed9-d641819c2dda",
@@ -3338,10 +3388,11 @@ curl --header "X-Vault-Token:$TOKEN" $VAULT_ADDR/v1/otus/otus-rw/config | jq
   "warnings": null,
   "auth": null
 }
-````
+```
+
 - Проверим запись в otus-ro/config:
 
-````
+```
 curl --request POST --data '{"bar": "baz"}' --header "X-Vault-Token:s.SCbMdIL61rqmyqrCUldd1ocw" $VAULT_ADDR/v1/otus/otus-ro/config | jq
 
 {
@@ -3349,13 +3400,13 @@ curl --request POST --data '{"bar": "baz"}' --header "X-Vault-Token:s.SCbMdIL61r
     "1 error occurred:\n\t* permission denied\n\n"
   ]
 }
-````
+```
 
 - Проверим запись в otus-ro/config1:
 
 `curl --request POST --data '{"bar": "baz"}' --header "X-Vault-Token:$TOKEN" $VAULT_ADDR/v1/otus/otus-rw/config1 | jq`
 
-````
+```
 curl --header "X-Vault-Token:$TOKEN" $VAULT_ADDR/v1/otus/otus-rw/config1 | jq
 {
   "request_id": "922fb606-f383-ecf6-6173-06ef2e9c3fcc",
@@ -3369,11 +3420,11 @@ curl --header "X-Vault-Token:$TOKEN" $VAULT_ADDR/v1/otus/otus-rw/config1 | jq
   "warnings": null,
   "auth": null
 }
-````
+```
 
 - Проверим запись в otus-ro/config1:
 
-````
+```
 curl --request POST --data '{"bar": "baz"}' --header "X-Vault-Token:$TOKEN" $VAULT_ADDR/v1/otus/otus-rw/config | jq
 
 {
@@ -3381,22 +3432,23 @@ curl --request POST --data '{"bar": "baz"}' --header "X-Vault-Token:$TOKEN" $VAU
     "1 error occurred:\n\t* permission denied\n\n"
   ]
 }
-````
+```
+
 Доступ запрещен, так как у нас нет прав на обновление `otus/otus-ro/*`
 
 Обновим otus-policy.hcl
 
 - Применим новые политики:
 
-````
+```
 kubectl cp otus-policy.hcl vault-0:/home/vault
 kubectl exec -it vault-0 -- vault policy write otus-policy /home/vault/otus-policy.hcl
 Success! Uploaded policy: otus-policy
-````
+```
 
 - Пробуем снова записать:
 
-````
+```
 curl --request POST --data '{"bar": "baz"}' --header "X-Vault-Token:$TOKEN" $VAULT_ADDR/v1/otus/otus-rw/config | jq
 
 curl --header "X-Vault-Token:$TOKEN" $VAULT_ADDR/v1/otus/otus-rw/config | jq
@@ -3412,7 +3464,8 @@ curl --header "X-Vault-Token:$TOKEN" $VAULT_ADDR/v1/otus/otus-rw/config | jq
   "warnings": null,
   "auth": null
 }
-````
+```
+
 OK!
 
 ## ==Use case использования авторизации через кубер
@@ -3422,7 +3475,6 @@ OK!
 - Через consul-template достанем секрет и положим его в nginx
 
 - Итог - nginx получил секрет из волта, не зная ничего про vault
-
 
 ## ==Заберем репозиторий с примерами
 
@@ -3436,12 +3488,12 @@ OK!
 
 ## ==Запускаем
 
-````
+```
 kubectl apply -f configmap.yaml
 configmap/example-vault-agent-config created
-````
+```
 
-````
+```
 kubectl get configmap example-vault-agent-config -o yaml
 apiVersion: v1
 data:
@@ -3501,18 +3553,18 @@ metadata:
   resourceVersion: "20217"
   selfLink: /api/v1/namespaces/default/configmaps/example-vault-agent-config
   uid: 0a3d745d-bec6-11ea-ba06-42010aa40094
-````
+```
 
-````
+```
 kubectl apply -f example-k8s-spec.yaml
 pod/vault-agent-example created
-````
+```
 
 ## == Сделаем проверку
 
 - Законнектимся к поду nginx и вытащим оттуда index.html
 
-````
+```
 kubectl exec -ti vault-agent-example -c nginx-container  -- cat /usr/share/nginx/html/index.html
 <html>
 <body>
@@ -3524,50 +3576,48 @@ kubectl exec -ti vault-agent-example -c nginx-container  -- cat /usr/share/nginx
 
 </body>
 </html>
-````
-
+```
 
 ## ==Создадим CA на базе vault
 
 - Включим pki secrets
 
-````
+```
 kubectl exec -it vault-0 -- vault secrets enable pki
 Success! Enabled the pki secrets engine at: pki/
-````
+```
 
-````
+```
 kubectl exec -it vault-0 -- vault secrets tune -max-lease-ttl=87600h pki
 Success! Tuned the secrets engine at: pki/
-````
+```
 
 `kubectl exec -it vault-0 -- vault write -field=certificate pki/root/generate/internal common_name="example.ru" ttl=87600h > CA_cert.crt`
 
 ## ==Пропишем урлы для ca и отозванных сертификатов
 
-````
+```
 kubectl exec -it vault-0 -- vault write pki/config/urls issuing_certificates="http://vault:8200/v1/pki/ca" crl_distribution_points="http://vault:8200/v1/pki/crl"
 Success! Data written to: pki/config/urls
-````
+```
 
 ## ==Создадим промежуточный сертификат
 
-````
+```
 exec -it vault-0 -- vault secrets enable --path=pki_int pki
 Success! Enabled the pki secrets engine at: pki_int/
-````
+```
 
-````
+```
 exec -it vault-0 -- vault secrets tune -max-lease-ttl=87600h pki_int
 Success! Tuned the secrets engine at: pki_int/
-````
+```
 
 `kubectl exec -it vault-0 -- vault write -format=json pki_int/intermediate/generate/internal common_name="example.ru Intermediate Authority" | jq -r '.data.csr' > pki_intermediate.csr`
 
-
 ## ==Пропишем промежуточный сертификат в vault
 
-````
+```
 kubectl cp pki_intermediate.csr vault-0:./tmp/
 
 kubectl exec -it vault-0 -- vault write -format=json pki/root/sign-intermediate csr=@/tmp/pki_intermediate.csr format=pem_bundle ttl="43800h" | jq -r '.data.certificate' > intermediate.cert.pem
@@ -3576,22 +3626,22 @@ kubectl cp intermediate.cert.pem vault-0:./tmp/
 
 kubectl exec -it vault-0 -- vault write pki_int/intermediate/set-signed certificate=@/tmp/intermediate.cert.pem
 Success! Data written to: pki_int/intermediate/set-signed
-````
+```
 
 ## ==Создадим и отзовем новые сертификаты
 
 - Создадим роль для выдачи сертификатов
 
-````
+```
 kubectl exec -it vault-0 -- vault write pki_int/roles/example-dot-ru \
 allowed_domains="example.ru" allow_subdomains=true max_ttl="720h"
 
 Success! Data written to: pki_int/roles/example-dot-ru
-````
+```
 
 - Создадим сертификат
 
-````
+```
 kubectl exec -it vault-0 -- vault write pki_int/issue/example-dot-ru common_name="test.example.ru" ttl="24h"
 Key                 Value
 ---                 -----
@@ -3690,17 +3740,17 @@ qdWT93qzqGlKeeqeO9M60kupzxJ+piAR4R0TpiS4FnL4qJLnL70now==
 -----END RSA PRIVATE KEY-----
 private_key_type    rsa
 serial_number       53:55:1a:c9:8b:9c:5b:74:96:e3:71:2d:a3:3d:64:00:29:ed:6e:e7
-````
+```
 
 - Отзовем сертификат
 
-````
+```
 kubectl exec -it vault-0 -- vault write pki_int/revoke serial_number="53:55:1a:c9:8b:9c:5b:74:96:e3:71:2d:a3:3d:64:00:29:ed:6e:e7"
 Key                        Value
 ---                        -----
 revocation_time            1592326196
 revocation_time_rfc3339    2020-06-16T16:49:56.117712099Z
-````
+```
 
 ## ==Включим TLS
 
@@ -3714,7 +3764,7 @@ openssl genrsa -out vault_gke.key 4096
 
 - Применяем
 
-````
+```
 kubectl apply -f vault_csr.yaml
 certificatesigningrequest.certificates.k8s.io/vaultcsr created
 
@@ -3724,12 +3774,11 @@ certificatesigningrequest.certificates.k8s.io/vaultcsr approved
 kubectl get csr vaultcsr -o jsonpath='{.status.certificate}' | base64 --decode > vault.crt
 
 kubectl create secret tls vault-certs --cert=vault.crt --key=vault_gke.key
-````
-
+```
 
 - Пересоздадим vault с новым vault-tls.values.yaml
 
-````
+```
 helm upgrade --install vault hashicorp/vault -f vault-tls.values.yaml
 Release "vault" does not exist. Installing it now.
 NAME: vault
@@ -3751,11 +3800,11 @@ Your release is named vault. To learn more about the release, try:
 
   $ helm status vault
   $ helm get vault
-````
+```
 
 Проверяем:
 
-````
+```
 kubectl get secret $(kubectl get sa vault-auth -o jsonpath="{.secrets[*]['name']}") -o jsonpath="{.data['ca\.crt']}" | base64 --decode  > ca.crt
 
 kubectl port-forward vault-0 8200:8200
@@ -3774,24 +3823,24 @@ curl --cacert ca.crt  -H "X-Vault-Token: s.Q4JOojZtdGgfiwoxJ4L3v75w" -X GET http
   "warnings": null,
   "auth": null
 }
-````
+```
 
 ## ==Настроим автообновление сертификатов
 
- - Запустим nginx
- - Реализуем автообнвление сертификатов для nginx c помощью vault-inject
+- Запустим nginx
+- Реализуем автообнвление сертификатов для nginx c помощью vault-inject
 
 Подготовим policy:
 
-````hcl
+```hcl
 path "pki_int/issue/*" {
     capabilities = ["create", "read", "update", "list"]
 }
-````
+```
 
 Применим:
 
-````
+```
 kubectl cp nginx/nginx-policy.hcl vault-0:/home/vault
 kubectl exec -it vault-0 -- vault policy write nginx-policy /home/vault/nginx-policy.hcl
 Success! Uploaded policy: pki-policy
@@ -3799,12 +3848,11 @@ Success! Uploaded policy: pki-policy
 kubectl exec -it vault-0 -- vault write auth/kubernetes/role/nginx-role \
         bound_service_account_names=vault-auth \
         bound_service_account_namespaces=default policies=nginx-policy ttl=24h
-````
-
+```
 
 Добавим анотации в поду:
 
-````
+```
       annotations:
         vault.hashicorp.com/agent-inject: "true"
         vault.hashicorp.com/agent-inject-status: "update"
@@ -3821,42 +3869,42 @@ kubectl exec -it vault-0 -- vault write auth/kubernetes/role/nginx-role \
           {{- end }}
         vault.hashicorp.com/service: "http://vault:8200"
         vault.hashicorp.com/agent-inject-command-server.key: "/bin/sh -c 'pkill -HUP nginx || true'"
-````
+```
 
 Применим:
 
-````
+```
 kubectl apply -f nginx/nginx-configMap.yaml -f nginx/nginx-service.yaml -f nginx/nginx-deployment.yaml
 configmap/nginx-config created
 service/nginx created
 deployment.apps/nginx created
-````
+```
 
 ## kuberenetes-gitops
 
 ### ==Подготовка GitLab репозитория==
 
- - Переместим в проект microservices-demo код из GitHub репозитория:
+- Переместим в проект microservices-demo код из GitHub репозитория:
 
-````
+```
 git clone https://github.com/GoogleCloudPlatform/microservices-democd microservices-demogit remote add gitlab git@gitlab.com:volkmydj/microservices-demo.gitgit remote remove origingit push gitlab master
-`````
+```
 
 ### ==Создание Helm чартов==
 
- - Подготовим Helm чарты для каждого микросервиса.
+- Подготовим Helm чарты для каждого микросервиса.
 
- - Во всех манифестах, описывающих deployment, обязательно параметризуем  название образа и его тег:
+- Во всех манифестах, описывающих deployment, обязательно параметризуем название образа и его тег:
 
- ````yaml
+```yaml
 image:
   repository: frontend
   tag: v0.0.1
-`````
+```
 
 - Получаем следующий результат:
 
-````
+```
 tree -L 1 deploy/charts
 deploy/charts
 ├── adservice
@@ -3870,7 +3918,7 @@ deploy/charts
 ├── productcatalogservice
 ├── recommendationservice
 └── shippingservice
-````
+```
 
 ### ==Подготовка Kubernetes кластера==
 
@@ -3878,7 +3926,7 @@ deploy/charts
 
 `terraform init && terraform apply`
 
-````
+```
 Apply complete! Resources: 3 added, 0 changed, 0 destroyed.
 
 Outputs:
@@ -3887,7 +3935,7 @@ dev_output = {
   "cluster_endpoint" = "35.195.131.29"
   "external_ip_address" = "35.240.72.173"
 }
-````
+```
 
 ## ==Continuous Integration==
 
@@ -3895,13 +3943,13 @@ dev_output = {
 
 `make build && make push`
 
- - При тегировании образов используем подход `semver` , например, первому собранному образу логично выставить тег `v0.0.1`
+- При тегировании образов используем подход `semver` , например, первому собранному образу логично выставить тег `v0.0.1`
 
- ## ==Подготовка==
+## ==Подготовка==
 
- - Произведем установку Flux в кластер, в namespace flux:
+- Произведем установку Flux в кластер, в namespace flux:
 
-````
+```
 helm upgrade --install flux fluxcd/flux -f flux.values.yaml --namespace flux --create-namespace
 Release "flux" does not exist. Installing it now.
 NAME: flux
@@ -3920,13 +3968,13 @@ https://docs.fluxcd.io/en/latest/references/fluxctl#installing-fluxctl
 and running:
 
   fluxctl identity --k8s-fwd-ns flux
-````
+```
 
- - Установим Helm operator:
+- Установим Helm operator:
 
 `helm upgrade --install helm-operator fluxcd/helm-operator -f helm-operator.values.yaml --namespace flux`
 
-````
+```
 helm upgrade --install helm-operator fluxcd/helm-operator -f helm-operator.values.yaml --namespace flux
 Release "helm-operator" does not exist. Installing it now.
 NAME: helm-operator
@@ -3977,14 +4025,14 @@ spec:
 EOF
 
 watch kubectl get hr
-````
+```
 
 - Установим fluxctl на локальную машину для управления нашим CDинструментом. Руководство по установке
 
-````
+```
 brew install fluxctl
 export FLUX_FORWARD_NAMESPACE=flux
-````
+```
 
 - Добавим в свой профиль GitLab публичный ssh-ключ,при помощи которого flux получит доступ к нашему git-репозиторию:
 
@@ -3992,7 +4040,7 @@ export FLUX_FORWARD_NAMESPACE=flux
 
 `fluxctl identity --k8s-fwd-ns flux`
 
- Пришло время проверить корректность работы Flux. Как мы уже знаем, Flux умеет автоматически синхронизировать состояние кластера и репозитория. Это касается не только сущностей HelmRelease, которыми мы будем оперировать для развертывания приложения, но и обыкновенных манифестов.
+Пришло время проверить корректность работы Flux. Как мы уже знаем, Flux умеет автоматически синхронизировать состояние кластера и репозитория. Это касается не только сущностей HelmRelease, которыми мы будем оперировать для развертывания приложения, но и обыкновенных манифестов.
 
 Поместим манифест, описывающий namespace microservices-demo в директорию deploy/namespaces и сделаем push в GitLab:
 
@@ -4001,11 +4049,11 @@ apiVersion: v1
 kind: Namespace
 metadata:
   name: microservices-demo
-````
+```
 
 Если все предыдущие шаги проделаны верно - в кластере через некоторое время будет создан namespace microservices-demo:
 
-````
+```
 kubectl get ns
 NAME                 STATUS   AGE
 default              Active   61m
@@ -4015,19 +4063,19 @@ kube-node-lease      Active   61m
 kube-public          Active   61m
 kube-system          Active   61m
 microservices-demo   Active   55s
-````
+```
 
-Также  в  логах  pod  с  flux  должна  появиться  строка,  описывающаядействия данного инструмента:
+Также в логах pod с flux должна появиться строка, описывающаядействия данного инструмента:
 
-````
+```
 kubectl logs -n flux flux-5f56548c47-tmddx | grep "kubectl apply -f"
 ts=2020-07-14T09:13:29.652807422Z caller=sync.go:606 method=Sync cmd="kubectl apply -f -" took=1.213519592s err=null output="namespace/microservices-demo created"
-````
+```
 
 ### ==HelmRelease==
 
-Мы  подобрались  к  сущностям,  которыми  управляет  helm-operator - `HelmRelease`. \
-Для описания сущностей такого вида создадим отдельную директорию `deploy/releases`  и  поместим  туда  файл `frontend.yaml`  с  описанием конфигурации релиза.
+Мы подобрались к сущностям, которыми управляет helm-operator - `HelmRelease`. \
+Для описания сущностей такого вида создадим отдельную директорию `deploy/releases` и поместим туда файл `frontend.yaml` с описанием конфигурации релиза.
 
 Опишем некоторые части манифеста HelmRelease:
 
@@ -4041,25 +4089,25 @@ ts=2020-07-14T09:13:29.652807422Z caller=sync.go:606 method=Sync cmd="kubectl ap
 
 4. Переопределяем переменные Helm chart. В дальнейшем Flux может сампереписывать эти значения и делать commit в git-репозиторий (например,изменять тег Docker образа при его обновлении в Registry)
 
-
 ### ==HelmRelease | Проверка==
 
- - Убедимся  что  HelmRelease  для  микросервиса  frontend  появился  вкластере:
+- Убедимся что HelmRelease для микросервиса frontend появился вкластере:
 
-````
+```
 kubectl get helmrelease -n microservices-demo
 NAME       RELEASE   PHASE       STATUS   MESSAGE                                                                       AGE
 frontend             Succeeded            Release was successful for Helm release 'frontend' in 'microservices-demo'.   73s
-````
- - По статусу мы можем понять, что релиз применился успешно, и frontendзапущен. Дополнительно проверим это:
+```
 
-````
+- По статусу мы можем понять, что релиз применился успешно, и frontendзапущен. Дополнительно проверим это:
+
+```
 helm list -n microservices-demo
 NAME            NAMESPACE               REVISION        UPDATED                                 STATUS          CHART           APP VERSION
 frontend        microservices-demo      1               2020-07-14 18:40:11.033116958 +0000 UTC deployed        frontend-0.21.0 1.16.0
-````
->  Командой  `fluxctl --k8s-fwd-ns flux sync`   можно инициировать синхронизацию вручную.
+```
 
+> Командой `fluxctl --k8s-fwd-ns flux sync` можно инициировать синхронизацию вручную.
 
 ### ==Обновление образа==
 
@@ -4067,27 +4115,27 @@ frontend        microservices-demo      1               2020-07-14 18:40:11.0331
 
 2. Дождемся автоматического обновления релиза в Kubernetes кластере(для просмотра ревизий релиза можно использовать команду `helm history frontend -n microservices-demo``
 
-````
+```
 helm history frontend -n microservices-demo
 REVISION        UPDATED                         STATUS          CHART           APP VERSION     DESCRIPTION
 1               Tue Jul 14 18:40:11 2020        superseded      frontend-0.21.0 1.16.0          Install complete
 2               Tue Jul 14 18:57:17 2020        deployed        frontend-0.21.0 1.16.0          Upgrade complete
-````
+```
 
 3. Проверим, изменилось ли что-либо в git-репозитории (в частности, в файле `deploy/releases/frontend.yaml`)
 
-````yaml
-  values:
-    image:
-      repository: volkmydj/frontend
-      tag: v0.0.2
-````
+```yaml
+values:
+  image:
+    repository: volkmydj/frontend
+    tag: v0.0.2
+```
 
 ### ==Обновление Helm chart==
 
- - Попробуем внести изменения в Helm chart `frontend` и поменять имя `deployment` на `frontend-hipster`
+- Попробуем внести изменения в Helm chart `frontend` и поменять имя `deployment` на `frontend-hipster`
 
- - Сделаем push измененного Helm chart в GitLab и понаблюдаем за процессом
+- Сделаем push измененного Helm chart в GitLab и понаблюдаем за процессом
 
 > Найдем в логах helm-operator строки, указывающие на механизм проверки изменений в Helm chart и определения необходимости обновить релиз. Приложим данные строки к описанию PR.
 
@@ -4110,14 +4158,14 @@ ts=2020-07-14T19:20:36.698738803Z caller=helm.go:69 component=helm version=v3 in
 ts=2020-07-14T19:20:37.191880904Z caller=helm.go:69 component=helm version=v3 info="performing update for frontend" targetNamespace=microservices-demo release=frontend
 ts=2020-07-14T19:20:37.203999765Z caller=helm.go:69 component=helm version=v3 info="dry run for frontend" targetNamespace=microservices-demo release=frontend
 ts=2020-07-14T19:20:37.228984538Z caller=release.go:273 component=release release=frontend targetNamespace=microservices-demo resource=microservices-demo:helmrelease/frontend helmVersion=v3 info="no changes" phase=dry-run-compare
-````
+```
 
 ### ==Самостоятельное задание==
 
- - Добавьте манифесты HelmRelease для всех микросервисов входящих всостав HipsterShop
- - Проверим, что все микросервисы успешно развернулись в Kubernetes кластере
+- Добавьте манифесты HelmRelease для всех микросервисов входящих всостав HipsterShop
+- Проверим, что все микросервисы успешно развернулись в Kubernetes кластере
 
-````
+```
 kubectl get helmrelease -n microservices-demo
 NAME                    RELEASE                 PHASE       STATUS     MESSAGE                                                                                    AGE
 adservice               adservice               Succeeded   deployed   Release was successful for Helm release 'adservice' in 'microservices-demo'.               62s
@@ -4131,9 +4179,9 @@ paymentservice          paymentservice          Succeeded   deployed   Release w
 productcatalogservice   productcatalogservice   Succeeded   deployed   Release was successful for Helm release 'productcatalogservice' in 'microservices-demo'.   62s
 recommendationservice   recommendationservice   Succeeded   deployed   Release was successful for Helm release 'recommendationservice' in 'microservices-demo'.   62s
 shippingservice         shippingservice         Succeeded   deployed   Release was successful for Helm release 'shippingservice' in 'microservices-demo'.         62s
-````
+```
 
-````
+```
 kubectl get po -n microservices-demo
 NAME                                     READY   STATUS     RESTARTS   AGE
 adservice-55f877744c-khl7s               1/1     Running    0          24m
@@ -4148,7 +4196,7 @@ paymentservice-7f74787749-bj8c4          1/1     Running    0          24m
 productcatalogservice-6c9989c6b9-wg4w8   1/1     Running    0          24m
 recommendationservice-554ccc4c5f-9zjsk   1/1     Running    0          24m
 shippingservice-65558c8477-d7vbt         1/1     Running    0          24m
-````
+```
 
 ### ==Установка Istio==
 
@@ -4160,31 +4208,31 @@ shippingservice-65558c8477-d7vbt         1/1     Running    0          24m
 
 1. Добавляем helm-репозиторий flagger:
 
-````
+```
 helm repo add flagger https://flagger.app
 "flagger" has been added to your repositories
-````
+```
 
 2. Устанавливаем CRD для Flagger:
 
-````
+```
 kubectl apply -fhttps://raw.githubusercontent.com/weaveworks/flagger/master/artifacts/flagger/crd.yaml
 customresourcedefinition.apiextensions.k8s.io/canaries.flagger.app created
 customresourcedefinition.apiextensions.k8s.io/metrictemplates.flagger.app created
 customresourcedefinition.apiextensions.k8s.io/alertproviders.flagger.app created
-````
+```
 
 3. Установливаем flagger с указанием использовать Istio:
 
-````
+```
 helm upgrade --install flagger flagger/flagger \
 --namespace=istio-system \
 --set crd.create=false \
 --set meshProvider=istio \
 --set metricsServer=http://prometheus:9090
-````
+```
 
-````
+```
 Release "flagger" does not exist. Installing it now.
 NAME: flagger
 LAST DEPLOYED: Tue Jul 14 23:54:05 2020
@@ -4194,11 +4242,11 @@ REVISION: 1
 TEST SUITE: None
 NOTES:
 Flagger installed
-````
+```
 
 ### ==Istio | Sidecar Injection==
 
- - Изменим созданное ранее описание namespace `microservices-demo`:
+- Изменим созданное ранее описание namespace `microservices-demo`:
 
 ```yaml
 apiVersion: v1
@@ -4207,21 +4255,21 @@ metadata:
   name: microservices-demo
   labels:
     istio-injection: enabled
-````
+```
 
 Выделенная строка указывает на необходимость добавить в каждый podsidecar контейнер с envoy proxy.
 
-> После  синхронизации  проверку  можно  выполнить  командой `kubectl get ns microservices-demo --show-labels``
+> После синхронизации проверку можно выполнить командой `kubectl get ns microservices-demo --show-labels``
 
-````
+```
 kubectl get ns microservices-demo --show-labels
 NAME                 STATUS   AGE   LABELS
 microservices-demo   Active   11h   fluxcd.io/sync-gc-mark=sha256.nR39Qg0XG0r3h4OKBshXoTK_gbhpeoAzKUK1fUzNmNg,istio-injection=enabled
-````
+```
 
- - Самый простой способ добавить sidecar контейнер в уже запущенныеpod - удалить их:
+- Самый простой способ добавить sidecar контейнер в уже запущенныеpod - удалить их:
 
-````
+```
 kubectl delete pods --all -n microservices-demo
 pod "adservice-55f877744c-khl7s" deleted
 pod "cartservice-d8b7586f8-xzg5h" deleted
@@ -4235,11 +4283,11 @@ pod "paymentservice-7f74787749-bj8c4" deleted
 pod "productcatalogservice-6c9989c6b9-wg4w8" deleted
 pod "recommendationservice-554ccc4c5f-9zjsk" deleted
 pod "shippingservice-65558c8477-d7vbt" deleted
-````
+```
 
- - После  этого  можно  проверить,  что  контейнер  с  названием istio-proxy появился внутри каждого pod:
+- После этого можно проверить, что контейнер с названием istio-proxy появился внутри каждого pod:
 
-````
+```
 kubectl describe pod -l app=frontend -n microservices-demo
 Name:           frontend-b6f7c8f8f-6mnbh
 Namespace:      microservices-demo
@@ -4437,22 +4485,20 @@ Events:
   Normal   Created    2m19s  kubelet, gke-dev-dev-ca0df695-5c1z  Created container istio-proxy
   Normal   Started    2m19s  kubelet, gke-dev-dev-ca0df695-5c1z  Started container istio-proxy
   Warning  Unhealthy  2m18s  kubelet, gke-dev-dev-ca0df695-5c1z  Readiness probe failed: HTTP probe failed with statuscode: 503
-````
+```
 
 ### == Доступ к frontend==
 
-На  текущий  момент  у  нас  отсутствует  ingress  и  мы  не  можем  получитьдоступ к frontend снаружи кластера.
+На текущий момент у нас отсутствует ingress и мы не можем получитьдоступ к frontend снаружи кластера.
 
-В  то  же  время  Istio  в  качестве  альтернативы  классическому  ingressпредлагает свой набор абстракций.
+В то же время Istio в качестве альтернативы классическому ingressпредлагает свой набор абстракций.
 
-Чтобы   настроить   маршрутизацию   трафика   к   приложению   сиспользованием  Istio,  нам  необходимо  добавить  ресурсы   и
+Чтобы настроить маршрутизацию трафика к приложению сиспользованием Istio, нам необходимо добавить ресурсы и
 
- - Создаем  директорию `deploy/istio`  и  помещаем в нее  следующие манифесты:
+- Создаем директорию `deploy/istio` и помещаем в нее следующие манифесты:
 
 - `frontend-vs.yaml`
 - `frontend-gw.yaml`
-
-
 
 ### ==Istio | VirtualService==
 
@@ -4475,7 +4521,7 @@ spec:
             host: frontend
             port:
               number: 80
-````
+```
 
 ### ==Istio | Gateway==
 
@@ -4497,37 +4543,37 @@ spec:
         protocol: HTTP
       hosts:
         - "*"
-````
+```
 
- - Созданный Gateway можно увидеть следующим образом:
+- Созданный Gateway можно увидеть следующим образом:
 
-````
+```
 kubectl get gateway -n microservices-demo
 NAME       AGE
 frontend   46m
-````
+```
 
- - Для  доступа  снаружи  нам  понадобится  EXTERNAL-IP  сервиса `istio-ingressgateway`
+- Для доступа снаружи нам понадобится EXTERNAL-IP сервиса `istio-ingressgateway`
 
-````
+```
 kubectl get svc istio-ingressgateway -n istio-system
 NAME                   TYPE           CLUSTER-IP      EXTERNAL-IP      PORT(S)                                                                                                                                      AGE
 istio-ingressgateway   LoadBalancer   10.11.251.158   104.199.16.158   15020:31756/TCP,80:30858/TCP,443:31456/TCP,31400:31469/TCP,15029:30773/TCP,15030:31894/TCP,15031:30644/TCP,15032:32562/TCP,15443:31236/TCP   13h
-````
+```
 
 ### ==Istio | Самостоятельное задание ==
 
-В  нашей  ситуации  ресурсы `Gateway`  и `VirtualService`  логическия вляются  частью  инфраструктурного  кода,  описывающего  окружение микросервиса `frontend`.   Поэтому,   оправданно   будет   перенести манифесты в Helm chart.
+В нашей ситуации ресурсы `Gateway` и `VirtualService` логическия вляются частью инфраструктурного кода, описывающего окружение микросервиса `frontend`. Поэтому, оправданно будет перенести манифесты в Helm chart.
 
-Дополним  Helm  chart `frontend`  манифестами `gateway.yaml`  и `virtualService.yaml`.  Оригинальные  манифесты  удалим вместе  с директорией `deploy/istio`.
+Дополним Helm chart `frontend` манифестами `gateway.yaml` и `virtualService.yaml`. Оригинальные манифесты удалим вместе с директорией `deploy/istio`.
 
 ### ==Flagger | Canary==
 
-Перейдем  непосредственно  к  настройке  канареечных  релизов.
+Перейдем непосредственно к настройке канареечных релизов.
 
- - Добавьте в Helm chart frontend еще один файл - `canary.yaml`
+- Добавьте в Helm chart frontend еще один файл - `canary.yaml`
 
-В  нем  будем  хранить  описание  стратегии,  по  которой  необходимообновлять данный микросервис.
+В нем будем хранить описание стратегии, по которой необходимообновлять данный микросервис.
 
 `canary.yaml``
 
@@ -4547,9 +4593,9 @@ spec:
     port: 80
     targetPort: 8080
     gateways:
-    - frontend
+      - frontend
     hosts:
-    - "*"
+      - "*"
     trafficPolicy:
       tls:
         mode: DISABLE
@@ -4559,46 +4605,47 @@ spec:
     maxWeight: 30
     stepWeight: 5
     metrics:
-    - name: request-success-rate
-      threshold: 99
-      interval: 30s
-````
+      - name: request-success-rate
+        threshold: 99
+        interval: 30s
+```
 
 Проверим, что Flagger:
- - Успешно инициализировал canary ресурс `frontend`:
 
-````
+- Успешно инициализировал canary ресурс `frontend`:
+
+```
 NAME       STATUS        WEIGHT   LASTTRANSITIONTIME
 frontend   Initialized   0        2020-07-14T22:15:05Z
-````
+```
 
 - Обновил pod, добавив ему к названию постфикс `primary`:
 
-````
+```
 kubectl get pods -n microservices-demo -l app=frontend-primary
 NAME                                READY   STATUS    RESTARTS   AGE
 frontend-primary-8665f87f76-pmzsv   2/2     Running   0          4m38s
-````
+```
 
- - Попробуем  провести  релиз.  Соберем  новый  образ  frontend  с  тегом v0.0.3 и сделаем push в Docker Hub.
+- Попробуем провести релиз. Соберем новый образ frontend с тегом v0.0.3 и сделаем push в Docker Hub.
 
-Через  некоторое  время  в  выводе kubectl describe canaryfrontend -n  microservices-demo  мы  сможет  наблюдать  следующую картину:
+Через некоторое время в выводе kubectl describe canaryfrontend -n microservices-demo мы сможет наблюдать следующую картину:
 
 `fluxctl list-images -n microservices-demo`
 
-````
+```
 kubectl get canaries -n microservices-demo
 NAME               STATUS        WEIGHT   LASTTRANSITIONTIME
 frontend-boutique   Progressing   30       2020-07-14T18:49:40Z
-````
+```
 
-````
+```
 kubectl get canaries -n microservices-demo
 NAME               STATUS      WEIGHT   LASTTRANSITIONTIME
 frontend-boutique   Succeeded   0        2020-07-14T18:51:09Z
-````
+```
 
-````
+```
 microservices-demo:helmrelease/frontend                  chart-image        volkmydj/frontend
                                                                             '-> v0.0.6                      14 Jul 20 18:52 UTC
                                                                                 v0.0.5                      14 Jul 20 18:52 UTC
@@ -4606,10 +4653,11 @@ microservices-demo:helmrelease/frontend                  chart-image        volk
                                                                                 v0.0.3                      14 Jul 20 18:52 UTC
                                                                                 v0.0.2                      14 Jul 20 18:52 UTC
                                                                                 v0.0.1                      14 Jul 20 07:09 UTC
-````
+```
+
 `kubectl describe canary frontend -n microservices-demo`
 
-````
+```
   Normal   Synced  7m24s (x2 over 18m)    flagger  New revision detected! Scaling up frontend.microservices-demo
   Normal   Synced  5m54s                  flagger  New revision detected! Restarting analysis for frontend.microservices-demo
   Normal   Synced  5m24s (x3 over 18m)    flagger  Advance frontend.microservices-demo canary weight 5
@@ -4620,14 +4668,13 @@ microservices-demo:helmrelease/frontend                  chart-image        volk
   Normal   Synced  3m24s                  flagger  Advance frontend.microservices-demo canary weight 25
   Normal   Synced  2m53s                  flagger  Advance frontend.microservices-demo canary weight 30
   Normal   Synced  84s (x3 over 2m24s)    flagger  (combined from similar events): Promotion completed! Scaling down frontend.microservices-demo
-````
-
+```
 
 ### == Flagger | Задание со ⭐==
 
- - Реализуем канареечное развертывание для одного из оставшихся микросервисов, например `checkoutservice`
+- Реализуем канареечное развертывание для одного из оставшихся микросервисов, например `checkoutservice`
 
-````
+```
 NAME              STATUS        WEIGHT   LASTTRANSITIONTIME
 checkoutservice   Progressing   0        2020-07-15T18:16:22Z
 frontend          Succeeded     0        2020-07-15T16:28:42Z
@@ -4659,9 +4706,9 @@ frontend          Succeeded    0        2020-07-15T16:28:42Z
 NAME              STATUS      WEIGHT   LASTTRANSITIONTIME
 checkoutservice   Succeeded   0        2020-07-15T18:20:52Z
 frontend          Succeeded   0        2020-07-15T16:28:42Z
-````
+```
 
- - Реализуем получение нотификаций о релизах в Slack.
+- Реализуем получение нотификаций о релизах в Slack.
 
 ```
 helm upgrade -i flagger flagger/flagger \
@@ -4672,22 +4719,19 @@ helm upgrade -i flagger flagger/flagger \
 --set slack.url=https://hooks.slack.com/services/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 \
 --set slack.channel=flagger-notification \
 --set slack.user=flagger
-````
-
+```
 
 ![alt text](screenshots/slack.png "Slack notification")​
 
-
 ### == Distributed Tracing | Задание со ⭐ ==
 
- - Установим Jaeger и научимся собирать трейсы:
-   - Непосредственно с микросервисов
-   - С sidecar контейнеров istio-proxy
-
+- Установим Jaeger и научимся собирать трейсы:
+  - Непосредственно с микросервисов
+  - С sidecar контейнеров istio-proxy
 
 Установим Jaeger с помощью istio оператора и профиля demo
 
-````
+```
 kubectl apply -f - <<EOF
 apiVersion: install.istio.io/v1alpha1
 kind: IstioOperator
@@ -4697,29 +4741,27 @@ metadata:
 spec:
   profile: demo
 EOF
-````
+```
 
- - Трейсы с istio-proxy sidecar контейнеров доступны в стоке.
+- Трейсы с istio-proxy sidecar контейнеров доступны в стоке.
 
- - Для получения трейсов непосредственно из микросервисов следует указать в   `templates` манифестов деплойментов значение переменной окружения:
+- Для получения трейсов непосредственно из микросервисов следует указать в `templates` манифестов деплойментов значение переменной окружения:
 
 ```yaml
 env:
-          - name: JAEGER_SERVICE_ADDR
-            value: "jaeger-collector.observability.svc.cluster.local:14268"
-````
+  - name: JAEGER_SERVICE_ADDR
+    value: "jaeger-collector.observability.svc.cluster.local:14268"
+```
 
- - `istioctl dashboard jaeger`
+- `istioctl dashboard jaeger`
 
- - Переходим в UI jaeger и выбираем сервисы:
-   - для istio-proxy: `<servicename>.microservice.demo`
-   - для микросервисов: `<servicename>`
+- Переходим в UI jaeger и выбираем сервисы:
+  - для istio-proxy: `<servicename>.microservice.demo`
+  - для микросервисов: `<servicename>`
 
 ![alt text](screenshots/jaegger-1.png "Slack notification")​
 
-
 ![alt text](screenshots/jaegger-2.png "Slack notification")​
-
 
 ### == УстановкаIstio|Заданиесо⭐==
 
@@ -4729,7 +4771,7 @@ env:
 
 `kubectl create ns istio-system`
 
-````
+```
 kubectl apply -f - <<EOF
 apiVersion: install.istio.io/v1alpha1
 kind: IstioOperator
@@ -4742,10 +4784,11 @@ EOF
 
 namespace/istio-system created
 istiooperator.install.istio.io/istio created
-````
- - Проверяем:
+```
 
-````
+- Проверяем:
+
+```
 kubectl get po -n istio-system
 NAME                                             READY   STATUS      RESTARTS   AGE
 flagger-b969c54b8-xbntg                          1/1     Running     0          104m
@@ -4764,9 +4807,9 @@ istiod-7968744c5b-8tlj4                          1/1     Running     0          
 kiali-6f457f5964-cblrm                           1/1     Running     0          3h59m
 prometheus-7c4b6d955-qvtbq                       2/2     Running     0          3h59m
 promsd-696bcc5b96-pjs2v                          2/2     Running     1          7h47m
-````
+```
 
-````
+```
 kubectl get svc -n istio-system
 NAME                        TYPE           CLUSTER-IP      EXTERNAL-IP      PORT(S)                                                                                                                                      AGE
 grafana                     ClusterIP      10.11.243.71    <none>           3000/TCP                                                                                                                                     4h
@@ -4788,8 +4831,7 @@ prometheus                  ClusterIP      10.11.250.54    <none>           9090
 promsd                      ClusterIP      10.11.240.196   <none>           9090/TCP                                                                                                                                     7h47m
 tracing                     ClusterIP      10.11.245.29    <none>           80/TCP                                                                                                                                       4h
 zipkin                      ClusterIP      10.11.252.234   <none>           9411/TCP                                                                                                                                     4h
-````
-
+```
 
 ## kubernetes-storage
 
@@ -4920,12 +4962,14 @@ root@storage-pod:/data# echo 'Hello Otus!' > index.html
 root@storage-pod:/data# cat index.html
 Hello Otus!
 ```
+
 7. Создаем shapshot:
 
 ```
 kubectl apply -f hw/snapshot.yaml
 volumesnapshot.snapshot.storage.k8s.io/snapshot created
 ```
+
 Проверяем:
 
 ```
@@ -5088,6 +5132,7 @@ kubectl get pv
 NAME                                       CAPACITY   ACCESS MODES   RECLAIM POLICY   STATUS   CLAIM                 STORAGECLASS      REASON   AGE
 pvc-e7b36e89-0c09-40d9-8ba5-1c2fe66f8aec   1Gi        RWO            Delete           Bound    default/storage-pvc   csi-hostpath-sc            2m1s
 ```
+
 Проверяем наличие восстановленных данных:
 
 ```
@@ -5101,7 +5146,6 @@ total 4
 -rw-r--r-- 1 root root 12 Aug 16 11:23 index.html
 ```
 
-
 ### Задание со 🌟. Развернуть k8s-кластер,к которому добавить хранилище на iSCSI
 
 Задание выполнялось на заранее развернутом кластере на голом железе, с помощью kubespray. В качестве хранилища была поднята ВМ на OS Centos 7 в той же подсети.
@@ -5113,17 +5157,20 @@ total 4
 systemctl disable firewalld
 systemctl stop firewalld
 ```
+
 3. Устанавливаем taregtd и targetcli:
 
 ```
 yum install targetd targetcli -y
 ```
+
 4. Создаем volume group для targetd:
 
 ```
 pvcreate /dev/sdb
 vgcreate vg-targetd /dev/sdb
 ```
+
 5. Разрешаем доступ RPC для targetd, редактированием файла `/etc/target/targetd.yaml`
 
 ```
@@ -5157,6 +5204,7 @@ ssl: false
 ```
 systemctl enable --now targetd
 ```
+
 Проверяем:
 
 ```
@@ -5200,6 +5248,7 @@ apiVersion: apps/v1
 ```yaml
 - name: TARGETD_ADDRESS
 ```
+
 Также добавляем права RBAC на создание endpoint:
 
 ```yaml
@@ -5239,12 +5288,14 @@ parameters:
   # this is a comma separated list of initiators that will be give access to the created volumes, they must correspond to what you have configured in your nodes.
   initiators: iqn.1994-05.com.redhat:node1,iqn.1994-05.com.redhat:node2,iqn.1994-05.com.redhat:node3
 ```
+
 12. Применяем манифесты:
 
 ```
 kubectl apply -f iscsi-provisioner-class.yaml
 kubectl apply -f iscsi-provisioner-pvc.yaml
 ```
+
 13. Проверяем созданный pvc и pv:
 
 ```
@@ -5369,10 +5420,12 @@ strace: attach: ptrace(PTRACE_SEIZE, 1): Operation not permitted
 containers:
   - image: aylei/debug-agent:latest
 ```
+
 ```
 kubectl apply -f strace/agent_daemonset.yml
 daemonset.apps/debug-agent configured
 ```
+
 ```
 kubectl-debug nginx --agentless=false --port-forward=true
 Forwarding from [::1]:10027 -> 10027
@@ -5410,8 +5463,8 @@ rt_sigsuspend([], 8
 
 1. Установим netperf-operator
 
- - Это Kubernetes-оператор, который позволяет запускать тесты пропускной способности сети между нодами кластера
- - Сам проект - не очень production-grade, но иногда выручает
+- Это Kubernetes-оператор, который позволяет запускать тесты пропускной способности сети между нодами кластера
+- Сам проект - не очень production-grade, но иногда выручает
 
 ```
 kubectl apply -f https://raw.githubusercontent.com/piontec/netperf-operator/master/deploy/crd.yaml
@@ -5423,6 +5476,7 @@ deployment.apps/netperf-operator created
 kubectl apply -f https://raw.githubusercontent.com/piontec/netperf-operator/master/deploy/cr.yaml
 netperf.app.example.com/example created
 ```
+
 Проверяем:
 
 ```
@@ -5450,7 +5504,8 @@ Status:
   Status:              Done
 Events:                <none>
 ```
-Видим статус `Done` и скорость `Speed Bits Per Sec:  8942.17`
+
+Видим статус `Done` и скорость `Speed Bits Per Sec: 8942.17`
 
 2. Добавляем сетевую политику для Calico, чтобы ограничить доступ к подам Netperf и включить логирование в iptables:
 
@@ -5496,6 +5551,7 @@ Status:
   Status:              Started test
 Events:                <none>
 ```
+
 Видим, что тест висит в статусе Started test. Вероятно в сетевой политике есть ошибка.
 
 3. Подключимся к ноде, чтобы посмотреть в чем дело:
@@ -5543,6 +5599,7 @@ daemonset.extensions/kube-iptables-tailer created
 kubectl delete -f kit/deploy/cr.yaml
 netperf.app.example.com "example" deleted
 ```
+
 ```
 kubectl apply -f kit/deploy/cr.yaml
 netperf.app.example.com/example created
@@ -5609,7 +5666,6 @@ Events:
 
 Обратим внимание на Events, паеты дропаются.
 
-
 ### Задание со ⭐
 
 - Исправим ошибку в сетевой политике, чтобы Netperf снова начал работать
@@ -5628,6 +5684,7 @@ egress:
   - action: Log
   - action: Deny
 ```
+
 Также необходимо попраить iptables-tailer.yaml:
 
 ```yaml
@@ -5640,7 +5697,7 @@ env:
 
 Результат:
 
-````
+```
 Events:
   Type     Reason      Age    From                                Message
   ----     ------      ----   ----                                -------
@@ -5650,4 +5707,519 @@ Events:
   Normal   Started     3m21s  kubelet, gke-dev-dev-775f4ceb-4rsd  Started container netperf-server-1419bead3dad
   Warning  PacketDrop  3m20s  kube-iptables-tailer                Packet dropped when receiving traffic from 10.0.4.16
   Warning  PacketDrop  64s    kube-iptables-tailer                Packet dropped when receiving traffic from netperf-client-1419bead3dad (10.0.4.16)
+```
+
+## kubernetes-production-clusters
+
+В GCP создаем 4 ноды с образом Ubuntu 18.04 LTS
+
+- master - 1 экземпляр (n1-standard-2)
+- worker - 3 экземпляра (n1-standard-1)
+
+Т.к. большую часть манипуляций надо будет произвести на каждой ноде, то рекомендую использовать tmux для этих целей.
+
+На каждой ноде c привилегиями root.
+
+- Отключаем swap: \
+  `swapoff -a`
+
+- Включаем маршрутизацию \
+
+```
+cat > /etc/sysctl.d/99-kubernetes-cri.conf <<EOF
+net.bridge.bridge-nf-call-iptables = 1
+net.ipv4.ip_forward = 1
+net.bridge.bridge-nf-call-ip6tables = 1
+EOF
+sysctl --system
+```
+
+- Устанавливаем Docker
+
+```
+apt-get update && apt-get install -y \
+apt-transport-https ca-certificates curl software-properties-common gnupg2
+```
+
+```
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
+add-apt-repository \
+"deb [arch=amd64] https://download.docker.com/linux/ubuntu \
+$(lsb_release -cs) \
+stable"
+```
+
+```
+apt-get update && apt-get install -y \
+containerd.io=1.2.13-1 \
+docker-ce=5:19.03.8~3-0~ubuntu-$(lsb_release -cs) \
+docker-ce-cli=5:19.03.8~3-0~ubuntu-$(lsb_release -cs)
+```
+
+```
+# Setup daemon.
+cat > /etc/docker/daemon.json <<EOF
+{
+"exec-opts": ["native.cgroupdriver=systemd"],
+"log-driver": "json-file",
+"log-opts": {
+"max-size": "100m"
+},
+"storage-driver": "overlay2"
+}
+EOF
+mkdir -p /etc/systemd/system/docker.service.d
+# Restart docker.
+systemctl daemon-reload
+systemctl restart docker
+```
+
+- Устанавливаем kubeadm, kubelet and kubectl
+
+```
+apt-get update && apt-get install -y apt-transport-https curl
+
+curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -
+cat <<EOF > /etc/apt/sources.list.d/kubernetes.list
+deb https://apt.kubernetes.io/ kubernetes-xenial main
+EOF
+apt-get update
+apt-get install -y kubelet=1.17.4-00 kubeadm=1.17.4-00 kubectl=1.17.4-00
+```
+
+- Настроим мастер ноду
+
+`kubeadm init --pod-network-cidr=192.168.0.0/24`
+
+В выводе будут:
+
+- команда для копирования конфига kubectl
+- сообщение о том, что необходимо установить сетевой плагин
+- команда для присоединения worker ноды
+
+```
+
+ - Копируем конфиг kubectl
+
+```
+
+mkdir -p $HOME/.kube
+cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+chown $(id -u):$(id -g) \$HOME/.kube/config
+
+```
+
+ - Устанавливаем сетевой плагин:
+
+`kubectl apply -f https://docs.projectcalico.org/manifests/calico.yaml`
+
+
+- Присоединяем остальные ноды
+
+```
+
+kubeadm join 10.132.0.52:6443 --token u8gxos.mf3ok30ad4xlgqj4 \
+ --discovery-token-ca-cert-hash sha256:939bb3eb4be6e159e824b7f0b698a4e53e1b6ee59a7190d462cbc332a1731fec
+
+```
+
+ - Проверяем
+
+```
+
+root@master-0:~# kubectl get nodes
+NAME STATUS ROLES AGE VERSION
+master-0 Ready master 2m14s v1.17.4
+worker-0 Ready <none> 42s v1.17.4
+worker-1 Ready <none> 34s v1.17.4
+worker-2 Ready <none> 24s v1.17.4
+
+````
+
+ - Для демонстрации работы кластера запустим nginx
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nginx-deployment
+spec:
+  selector:
+    matchLabels:
+      app: nginx
+  replicas: 4
+  template:
+    metadata:
+      labels:
+        app: nginx
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.17.2
+        ports:
+        - containerPort: 80
+````
+
+```
+kubectl apply -f deployment.yaml
+deployment.apps/nginx-deployment created
+```
+
+```
+root@master-0:~# kubectl get po
+NAME                               READY   STATUS    RESTARTS   AGE
+nginx-deployment-c8fd555cc-8sdrs   1/1     Running   0          10s
+nginx-deployment-c8fd555cc-lj6jd   1/1     Running   0          10s
+nginx-deployment-c8fd555cc-mqs4r   1/1     Running   0          10s
+nginx-deployment-c8fd555cc-wk8w7   1/1     Running   0          10s
+```
+
+Так как кластер мы разворачивали с помощью kubeadm, то и
+производить обновление будем с помощью него
+
+- Обновляем master
+
+```
+apt-get update && apt-get install -y kubeadm=1.18.0-00 \
+kubelet=1.18.0-00 kubectl=1.18.0-00
+```
+
+Проверяем
+
+```
+root@master-0:~# kubectl get nodes
+NAME       STATUS   ROLES    AGE     VERSION
+master-0   Ready    master   6m      v1.18.0
+worker-0   Ready    <none>   4m28s   v1.17.4
+worker-1   Ready    <none>   4m20s   v1.17.4
+worker-2   Ready    <none>   4m10s   v1.17.4
+```
+
+```
+cat /etc/kubernetes/manifests/kube-apiserver.yaml
+image: k8s.gcr.io/kube-apiserver:v1.17.4
+```
+
+- Обновим остальные компоненты кластера
+
+```
+root@master-0:~# kubeadm upgrade plan
+[upgrade/config] Making sure the configuration is correct:
+[upgrade/config] Reading configuration from the cluster...
+[upgrade/config] FYI: You can look at this config file with 'kubectl -n kube-system get cm kubeadm-config -oyaml'
+[preflight] Running pre-flight checks.
+[upgrade] Running cluster health checks
+[upgrade] Fetching available versions to upgrade to
+[upgrade/versions] Cluster version: v1.17.11
+[upgrade/versions] kubeadm version: v1.18.0
+I0913 21:41:26.343251   20821 version.go:252] remote version is much newer: v1.19.1; falling back to: stable-1.18
+[upgrade/versions] Latest stable version: v1.18.8
+[upgrade/versions] Latest stable version: v1.18.8
+[upgrade/versions] Latest version in the v1.17 series: v1.17.11
+[upgrade/versions] Latest version in the v1.17 series: v1.17.11
+
+Components that must be upgraded manually after you have upgraded the control plane with 'kubeadm upgrade apply':
+COMPONENT   CURRENT       AVAILABLE
+Kubelet     3 x v1.17.4   v1.18.8
+            1 x v1.18.0   v1.18.8
+
+Upgrade to the latest stable version:
+
+COMPONENT            CURRENT    AVAILABLE
+API Server           v1.17.11   v1.18.8
+Controller Manager   v1.17.11   v1.18.8
+Scheduler            v1.17.11   v1.18.8
+Kube Proxy           v1.17.11   v1.18.8
+CoreDNS              1.6.5      1.6.7
+Etcd                 3.4.3      3.4.3-0
+
+You can now apply the upgrade by executing the following command:
+
+	kubeadm upgrade apply v1.18.8
+
+Note: Before you can perform this upgrade, you have to update kubeadm to v1.18.8.
+```
+
+- Применим изменения
+
+`kubeadm upgrade apply v1.18.0`
+
+- Проверяем
+
+```
+root@master-0:~# kubeadm version
+kubeadm version: &version.Info{Major:"1", Minor:"18", GitVersion:"v1.18.0", GitCommit:"9e991415386e4cf155a24b1da15becaa390438d8", GitTreeState:"clean", BuildDate:"2020-03-25T14:56:30Z", GoVersion:"go1.13.8", Compiler:"gc", Platform:"linux/amd64"}
+```
+
+```
+root@master-0:~# kubectl version
+Client Version: version.Info{Major:"1", Minor:"18", GitVersion:"v1.18.0", GitCommit:"9e991415386e4cf155a24b1da15becaa390438d8", GitTreeState:"clean", BuildDate:"2020-03-25T14:58:59Z", GoVersion:"go1.13.8", Compiler:"gc", Platform:"linux/amd64"}
+Server Version: version.Info{Major:"1", Minor:"18", GitVersion:"v1.18.0", GitCommit:"9e991415386e4cf155a24b1da15becaa390438d8", GitTreeState:"clean", BuildDate:"2020-03-25T14:50:46Z", GoVersion:"go1.13.8", Compiler:"gc", Platform:"linux/amd64"}
+```
+
+```
+kubectl describe pod kube-apiserver-master -n kube-system
+Name:                 kube-apiserver-master-0
+Namespace:            kube-system
+Priority:             2000000000
+Priority Class Name:  system-cluster-critical
+Node:                 master-0/10.132.15.199
+Start Time:           Sun, 13 Sep 2020 21:32:54 +0000
+Labels:               component=kube-apiserver
+                      tier=control-plane
+Annotations:          kubeadm.kubernetes.io/kube-apiserver.advertise-address.endpoint: 10.132.15.199:6443
+                      kubernetes.io/config.hash: fb4cff1bc66e67e95828ecd278ee9a02
+                      kubernetes.io/config.mirror: fb4cff1bc66e67e95828ecd278ee9a02
+                      kubernetes.io/config.seen: 2020-09-13T21:42:42.581950704Z
+                      kubernetes.io/config.source: file
+Status:               Running
+IP:                   10.132.15.199
+IPs:
+  IP:           10.132.15.199
+Controlled By:  Node/master-0
+Containers:
+  kube-apiserver:
+    Container ID:  docker://b96e91967c94b90cd30a42f357ffa8c14af5e64c7764c720040ce443c4c6e0d5
+    Image:         k8s.gcr.io/kube-apiserver:v1.18.0
+    Image ID:      docker-pullable://k8s.gcr.io/kube-apiserver@sha256:fc4efb55c2a7d4e7b9a858c67e24f00e739df4ef5082500c2b60ea0903f18248
+    Port:          <none>
+    Host Port:     <none>
+    Command:
+      kube-apiserver
+      --advertise-address=10.132.15.199
+      --allow-privileged=true
+      --authorization-mode=Node,RBAC
+      --client-ca-file=/etc/kubernetes/pki/ca.crt
+      --enable-admission-plugins=NodeRestriction
+      --enable-bootstrap-token-auth=true
+      --etcd-cafile=/etc/kubernetes/pki/etcd/ca.crt
+      --etcd-certfile=/etc/kubernetes/pki/apiserver-etcd-client.crt
+      --etcd-keyfile=/etc/kubernetes/pki/apiserver-etcd-client.key
+      --etcd-servers=https://127.0.0.1:2379
+      --insecure-port=0
+      --kubelet-client-certificate=/etc/kubernetes/pki/apiserver-kubelet-client.crt
+      --kubelet-client-key=/etc/kubernetes/pki/apiserver-kubelet-client.key
+      --kubelet-preferred-address-types=InternalIP,ExternalIP,Hostname
+      --proxy-client-cert-file=/etc/kubernetes/pki/front-proxy-client.crt
+      --proxy-client-key-file=/etc/kubernetes/pki/front-proxy-client.key
+      --requestheader-allowed-names=front-proxy-client
+      --requestheader-client-ca-file=/etc/kubernetes/pki/front-proxy-ca.crt
+      --requestheader-extra-headers-prefix=X-Remote-Extra-
+      --requestheader-group-headers=X-Remote-Group
+      --requestheader-username-headers=X-Remote-User
+      --secure-port=6443
+      --service-account-key-file=/etc/kubernetes/pki/sa.pub
+      --service-cluster-ip-range=10.96.0.0/12
+      --tls-cert-file=/etc/kubernetes/pki/apiserver.crt
+      --tls-private-key-file=/etc/kubernetes/pki/apiserver.key
+    State:          Running
+      Started:      Sun, 13 Sep 2020 21:42:43 +0000
+    Ready:          True
+    Restart Count:  0
+    Requests:
+      cpu:        250m
+    Liveness:     http-get https://10.132.15.199:6443/healthz delay=15s timeout=15s period=10s #success=1 #failure=8
+    Environment:  <none>
+    Mounts:
+      /etc/ca-certificates from etc-ca-certificates (ro)
+      /etc/kubernetes/pki from k8s-certs (ro)
+      /etc/ssl/certs from ca-certs (ro)
+      /usr/local/share/ca-certificates from usr-local-share-ca-certificates (ro)
+      /usr/share/ca-certificates from usr-share-ca-certificates (ro)
+Conditions:
+  Type              Status
+  Initialized       True
+  Ready             True
+  ContainersReady   True
+  PodScheduled      True
+Volumes:
+  ca-certs:
+    Type:          HostPath (bare host directory volume)
+    Path:          /etc/ssl/certs
+    HostPathType:  DirectoryOrCreate
+  etc-ca-certificates:
+    Type:          HostPath (bare host directory volume)
+    Path:          /etc/ca-certificates
+    HostPathType:  DirectoryOrCreate
+  k8s-certs:
+    Type:          HostPath (bare host directory volume)
+    Path:          /etc/kubernetes/pki
+    HostPathType:  DirectoryOrCreate
+  usr-local-share-ca-certificates:
+    Type:          HostPath (bare host directory volume)
+    Path:          /usr/local/share/ca-certificates
+    HostPathType:  DirectoryOrCreate
+  usr-share-ca-certificates:
+    Type:          HostPath (bare host directory volume)
+    Path:          /usr/share/ca-certificates
+    HostPathType:  DirectoryOrCreate
+QoS Class:         Burstable
+Node-Selectors:    <none>
+Tolerations:       :NoExecute
+Events:
+  Type    Reason   Age    From               Message
+  ----    ------   ----   ----               -------
+  Normal  Pulled   2m10s  kubelet, master-0  Container image "k8s.gcr.io/kube-apiserver:v1.18.0" already present on machine
+  Normal  Created  2m10s  kubelet, master-0  Created container kube-apiserver
+  Normal  Started  2m10s  kubelet, master-0  Started container kube-apiserver
+```
+
+- Вывод worker-нод из планирования.
+
+Первым делом, мы сливаем всю нагрузку с ноды и выводим ее из планирования
+
+```
+root@master-0:~# kubectl drain worker-1
+node/worker-1 cordoned
+error: unable to drain node "worker-1", aborting command...
+
+There are pending nodes to be drained:
+ worker-1
+error: cannot delete DaemonSet-managed Pods (use --ignore-daemonsets to ignore): kube-system/calico-node-54tm7, kube-system/kube-proxy-8j6gg
+```
+
+kubectl drain убирает всю нагрузку, кроме DaemonSet,поэтому мы явно должны сказать, что уведомлены об этом
+
+```
+kubectl drain worker-1 --ignore-daemonsets
+node/worker-1 already cordoned
+WARNING: ignoring DaemonSet-managed Pods: kube-system/calico-node-54tm7, kube-system/kube-proxy-8j6gg
+evicting pod default/nginx-deployment-c8fd555cc-8sdrs
+evicting pod default/nginx-deployment-c8fd555cc-lj6jd
+pod/nginx-deployment-c8fd555cc-lj6jd evicted
+pod/nginx-deployment-c8fd555cc-8sdrs evicted
+node/worker-1 evicted
+```
+
+Когда мы вывели ноду на обслуживание, к статусу добавилась строчка SchedulingDisabled
+
+```
+root@master-0:~# kubectl get nodes -o wide
+NAME       STATUS                     ROLES    AGE   VERSION   INTERNAL-IP     EXTERNAL-IP   OS-IMAGE             KERNEL-VERSION    CONTAINER-RUNTIME
+master-0   Ready                      master   15m   v1.18.0   10.132.15.199   <none>        Ubuntu 16.04.7 LTS   4.15.0-1083-gcp   docker://19.3.8
+worker-0   Ready                      <none>   14m   v1.17.4   10.132.15.202   <none>        Ubuntu 16.04.7 LTS   4.15.0-1083-gcp   docker://19.3.8
+worker-1   Ready,SchedulingDisabled   <none>   14m   v1.17.4   10.132.15.201   <none>        Ubuntu 16.04.7 LTS   4.15.0-1083-gcp   docker://19.3.8
+worker-2   Ready                      <none>   14m   v1.17.4   10.132.15.200   <none>        Ubuntu 16.04.7 LTS   4.15.0-1083-gcp   docker://19.3.8
+```
+
+- Обновление worker-нод
+
+```
+apt-get install -y kubelet=1.18.0-00 kubeadm=1.18.0-00
+systemctl restart kubelet
+```
+
+- После обновления kubectl показывает новую версию, и статус SchedulingDisabled
+
+- Командой kubectl uncordon worker-1 возвращаем ноду обратно в планирование нагрузки
+
+- Обновим остальные ноды и получим
+
+```
+root@master-0:~# kubectl get nodes -o wide
+NAME       STATUS   ROLES    AGE   VERSION   INTERNAL-IP     EXTERNAL-IP   OS-IMAGE             KERNEL-VERSION    CONTAINER-RUNTIME
+master-0   Ready    master   21m   v1.18.0   10.132.15.199   <none>        Ubuntu 16.04.7 LTS   4.15.0-1083-gcp   docker://19.3.8
+worker-0   Ready    <none>   19m   v1.18.0   10.132.15.202   <none>        Ubuntu 16.04.7 LTS   4.15.0-1083-gcp   docker://19.3.8
+worker-1   Ready    <none>   19m   v1.18.0   10.132.15.201   <none>        Ubuntu 16.04.7 LTS   4.15.0-1083-gcp   docker://19.3.8
+worker-2   Ready    <none>   19m   v1.18.0   10.132.15.200   <none>        Ubuntu 16.04.7 LTS   4.15.0-1083-gcp   docker://19.3.8
+```
+
+### Автоматическое развертывание кластеров
+
+В данном задании ради демонстрации механики обновления мы вручную развернули и обновили кластер с одной master-нодой.
+Но развертывать большие кластера подобным способом не удобно. Поэтому мы рассмотрим инструмент для автоматического развертывания кластеров kubespray.
+Kubespray - это Ansible playbook для установки Kubernetes.
+Для его использования достаточно иметь SSH-доступ на машины, поэтому не важно как они были созданы (Cloud, Bare metal).
+
+Пре-реквизиты:
+
+- Python и pip на локальной машине
+- SSH доступ на все ноды кластера
+
+1. Получение kubespray
+
+`git clone https://github.com/kubernetes-sigs/kubespray.git`
+
+2. Установка зависимостей:
+
+`sudo pip install -r requirements.txt`
+
+3. Копирование примера конфига в отдельную директорию
+   `cp -rfp inventory/sample inventory/kubecluster`
+
+4. Редактируем файл inventory.ini
+
+```
+# ## Configure 'ip' variable to bind kubernetes services on a
+# ## different ip than the default iface
+# ## We should set etcd_member_name for etcd cluster. The node that is not a etcd member do not need to set the value, or can set the empty string value.
+[all]
+node1 ansible_host=35.225.94.170 etcd_member_name=etcd1
+node2 ansible_host=35.188.20.253  # ip=10.3.0.2 etcd_member_name=etcd2
+node3 ansible_host=34.72.222.39  # ip=10.3.0.3 etcd_member_name=etcd3
+node4 ansible_host=34.121.21.2  # ip=10.3.0.4 etcd_member_name=etcd4
+# node5 ansible_host=95.54.0.16  # ip=10.3.0.5 etcd_member_name=etcd5
+# node6 ansible_host=95.54.0.17  # ip=10.3.0.6 etcd_member_name=etcd6
+
+# ## configure a bastion host if your nodes are not directly reachable
+# bastion ansible_host=x.x.x.x ansible_user=some_user
+
+[kube-master]
+node1
+# node2
+
+[etcd]
+node1
+# node2
+# node3
+
+[kube-node]
+node2
+node3
+node4
+# node5
+# node6
+
+[calico-rr]
+
+[k8s-cluster:children]
+kube-master
+kube-node
+#calico-rr
+```
+
+5. Запускаем установку кластера.
+
+`ansible-playbook -i inventory/mycluster/inventory.ini --become --become-user=root --user=${SSH_USERNAME} --key-file=${SSH_PRIVATE_KEY} cluster.yml`
+
+```
+PLAY RECAP *************************************************************************************************************************************************************************************************
+localhost                  : ok=1    changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0
+node1                      : ok=588  changed=132  unreachable=0    failed=0    skipped=1119 rescued=0    ignored=0
+node2                      : ok=362  changed=86   unreachable=0    failed=0    skipped=576  rescued=0    ignored=0
+node3                      : ok=362  changed=86   unreachable=0    failed=0    skipped=575  rescued=0    ignored=0
+node4                      : ok=362  changed=86   unreachable=0    failed=0    skipped=575  rescued=0    ignored=0
+
+Monday 14 September 2020  18:10:14 +0300 (0:00:00.086)       1:06:04.828 ******
+===============================================================================
+kubernetes/node : Kubelet | reload systemd -------------------------------------------------------------------------------------------------------------------------------------------------------- 260.48s
+kubernetes/node : Write kubelet systemd init file ------------------------------------------------------------------------------------------------------------------------------------------------- 219.33s
+kubernetes/node : Write kubelet config file ------------------------------------------------------------------------------------------------------------------------------------------------------- 197.25s
+kubernetes-apps/ansible : Kubernetes Apps | Lay Down CoreDNS Template ----------------------------------------------------------------------------------------------------------------------------- 118.82s
+kubernetes/node : Write kubelet environment config file (kubeadm) ---------------------------------------------------------------------------------------------------------------------------------- 77.67s
+bootstrap-os : Install dbus for the hostname module ------------------------------------------------------------------------------------------------------------------------------------------------ 66.88s
+kubernetes/node : Node | restart kubelet ----------------------------------------------------------------------------------------------------------------------------------------------------------- 65.96s
+Gather necessary facts ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- 64.17s
+container-engine/docker : ensure docker packages are installed ------------------------------------------------------------------------------------------------------------------------------------- 63.59s
+network_plugin/calico : Calico | Create calico manifests ------------------------------------------------------------------------------------------------------------------------------------------- 53.05s
+kubernetes-apps/ansible : Kubernetes Apps | Start Resources ---------------------------------------------------------------------------------------------------------------------------------------- 49.15s
+kubernetes/master : slurp kubeadm certs ------------------------------------------------------------------------------------------------------------------------------------------------------------ 46.90s
+policy_controller/calico : Create calico-kube-controllers manifests -------------------------------------------------------------------------------------------------------------------------------- 37.41s
+kubernetes/preinstall : Create cni directories ----------------------------------------------------------------------------------------------------------------------------------------------------- 32.69s
+kubernetes/preinstall : Create kubernetes directories ---------------------------------------------------------------------------------------------------------------------------------------------- 32.21s
+bootstrap-os : Gather host facts to get ansible_os_family ------------------------------------------------------------------------------------------------------------------------------------------ 31.39s
+kubernetes/node : Kubelet | restart kubelet -------------------------------------------------------------------------------------------------------------------------------------------------------- 29.04s
+network_plugin/calico : Calico | Prevent NetworkManager from managing Calico interfaces ------------------------------------------------------------------------------------------------------------ 25.94s
+kubernetes-apps/ansible : Kubernetes Apps | Lay Down nodelocaldns Template ------------------------------------------------------------------------------------------------------------------------- 24.92s
+container-engine/docker : Docker | reload docker --------------------------------------------------------------------------------------------------------------------------------------------------- 24.08s
 ```

@@ -19,3 +19,4 @@ kuberenetes-storage/csi-driver-host-path
 packer-boxes
 packer
 kubernetes-gitops/microservices-demo
+kubespray
